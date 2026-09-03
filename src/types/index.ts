@@ -147,3 +147,33 @@ export interface AIChatMessage {
   suggestedActions?: { label: string; actionKey: string; params?: any }[];
   incidentContext?: CorrelatedIncident;
 }
+
+export interface DataBrokerEntry {
+  name: string;
+  category: string;
+  optOutUrl: string;
+  method: string;
+  estimatedRemovalDays: string;
+  dataCollected: string[];
+  legalBasis: string;
+}
+
+export interface GdprRequestPayload {
+  fullName: string;
+  email: string;
+  targetCompany: string;
+  requestType: 'ERASURE' | 'ACCESS';
+}
+
+export interface LiveEndpointEvent {
+  id: string;
+  timestamp: string;
+  eventType: 'FILE CREATED' | 'FILE MODIFIED' | 'FILE RENAMED' | 'FILE DELETED' | 'ENTROPY ANOMALY' | 'CANARY TRIGGERED' | 'RANSOMWARE DETECTED' | 'PROCESS GROUP CONTAINED' | 'RECOVERY INITIATED';
+  path: string;
+  processName: string;
+  gid?: number;
+  pid?: number;
+  entropy?: number;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  details: string;
+}

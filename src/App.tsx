@@ -6,7 +6,7 @@ import { BreachGuardConsole } from './components/BreachGuardConsole';
 import { AICopilot } from './components/AICopilot';
 import { CorrelatedIncidentModal } from './components/CorrelatedIncidentModal';
 
-import { SecurityMetrics, CorrelatedIncident, IrpTelemetryEvent, AIChatMessage, EmailBreachResult } from './types';
+import { SecurityMetrics, CorrelatedIncident, IrpTelemetryEvent, LiveEndpointEvent, AIChatMessage, EmailBreachResult } from './types';
 import { ransomWatchAdapter } from './adapters/ransomwatch-adapter';
 import { breachGuardAdapter } from './adapters/breachguard-adapter';
 import { aiAgentOrchestrator } from './services/ai-agent-orchestrator';
@@ -23,6 +23,7 @@ export function App() {
     ransomWatchAdapter.generateNextIrpTelemetry(),
     ransomWatchAdapter.generateNextIrpTelemetry()
   ]);
+  const [endpointEvents, setEndpointEvents] = useState<LiveEndpointEvent[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<CorrelatedIncident | null>(null);
   const [chatMessages, setChatMessages] = useState<AIChatMessage[]>(aiAgentOrchestrator.getChatHistory());
   const [breachHistory, setBreachHistory] = useState<EmailBreachResult[]>(breachGuardAdapter.getHistory());
@@ -33,14 +34,25 @@ export function App() {
   const [reports, setReports] = useState(ransomWatchAdapter.getReports());
   const [directories, setDirectories] = useState(ransomWatchAdapter.getProtectedDirectories());
 
-  // Real-time IRP Telemetry Polling Stream
+  // Subscribe to live WebSocket telemetry from RansomWatch Bridge
   useEffect(() => {
+    const unsubscribe = ransomWatchAdapter.subscribeTelemetry((irp, epEvent) => {
+      setRecentIrps(prev => [irp, ...prev.slice(0, 24)]);
+      if (epEvent) {
+        setEndpointEvents(prev => [epEvent, ...prev.slice(0, 49)]);
+      }
+    });
+
+    // Fallback polling for local simulation
     const interval = setInterval(() => {
       const nextIrp = ransomWatchAdapter.generateNextIrpTelemetry();
-      setRecentIrps(prev => [nextIrp, ...prev.slice(0, 19)]);
-    }, 2400);
+      setRecentIrps(prev => [nextIrp, ...prev.slice(0, 24)]);
+    }, 2800);
 
-    return () => clearInterval(interval);
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   const refreshOrchestrator = () => {
@@ -51,20 +63,19 @@ export function App() {
     setReports(ransomWatchAdapter.getReports());
   };
 
-  // Simulate Attack Scenario (Demo & Testing)
+  // Simulate Attack Scenario (For controlled demonstration)
   const handleSimulateAttack = () => {
     const { process, report } = ransomWatchAdapter.triggerTestAttack();
     refreshOrchestrator();
 
-    // Trigger AI copilot notification message
     const alertMsg: AIChatMessage = {
       id: 'msg-' + Math.random().toString(36).substring(2, 9),
       sender: 'agent',
       timestamp: new Date().toLocaleTimeString(),
       text: `🚨 **NEW HIGH-PRIORITY ATTACK CORRELATED!**\n\nRansomWatch detected rogue process \`${process.name}\` (GID: ${process.gid}, Main PID: ${process.mainPid}) attempting unauthorized high-entropy writes (**Shannon Entropy: ${process.entropy}**). Minifilter driver \`FsFilter.sys\` dispatched **MESSAGE_KILL_GID** to terminate the process tree. Azure snapshot restore triggered for affected database files.`,
       suggestedActions: [
-        { label: 'View Incident Report', actionKey: 'EXPLAIN_1042' },
-        { label: 'Verify Azure Snapshot Integrity', actionKey: 'VERIFY_AZURE' }
+        { label: 'View Incident Report', actionKey: 'EXPLAIN_INCIDENT' },
+        { label: 'Verify Azure Snapshot Integrity', actionKey: 'RESTORE_AZURE' }
       ]
     };
 
@@ -110,6 +121,7 @@ export function App() {
             metrics={metrics}
             incidents={incidents}
             recentIrps={recentIrps}
+            endpointEvents={endpointEvents}
             onSelectIncident={(inc) => setSelectedIncident(inc)}
             onNavigateTab={(tab) => setActiveTab(tab)}
             onSimulateAttack={handleSimulateAttack}
@@ -148,10 +160,10 @@ export function App() {
       {/* Footer */}
       <footer className="glass-panel border-t border-slate-800/80 px-4 py-4 mt-auto text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>AegisGuard Unified Cybersecurity Orchestration Engine &bull; Version 1.0.0</span>
+          <span>BreachGuard Unified Cybersecurity Platform &bull; Zero-Knowledge Credential Defense & Real-Time Ransomware Mitigation</span>
           <div className="flex items-center gap-4 text-[11px] font-mono">
-            <span className="text-cyan-400">RansomWatch (C++/CLI & Driver): Untouched</span>
-            <span className="text-indigo-400">Breach Guard (Next.js): Untouched</span>
+            <span className="text-cyan-400">RansomWatch (Kernel FsFilter.sys): Authoritative</span>
+            <span className="text-indigo-400">Breach Guard (k-Anonymity): Client-Side Hashed</span>
           </div>
         </div>
       </footer>
@@ -168,4 +180,5 @@ export function App() {
     </div>
   );
 }
+
 export default App;

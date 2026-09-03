@@ -16,9 +16,14 @@ import {
   Archive,
   CheckCircle,
   Clock,
-  Play
+  Play,
+  Check,
+  AlertTriangle,
+  RefreshCw,
+  FolderSync
 } from 'lucide-react';
 import { RansomWatchProcess, RansomWatchTrap, RansomWatchReport, IrpTelemetryEvent } from '../types';
+import { ransomWatchAdapter } from '../adapters/ransomwatch-adapter';
 
 interface RansomWatchMonitorProps {
   processes: RansomWatchProcess[];
@@ -38,6 +43,8 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
   onTriggerTestAttack
 }) => {
   const [selectedReport, setSelectedReport] = useState<RansomWatchReport>(reports[0]);
+  const [isExecutingAction, setIsExecutingAction] = useState(false);
+  const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
   const getTrapIcon = (category: RansomWatchTrap['category']) => {
     switch (category) {
@@ -46,6 +53,22 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
       case 'ARCHIVE': return <Archive className="w-4 h-4 text-amber-400" />;
       default: return <FileText className="w-4 h-4 text-cyan-400" />;
     }
+  };
+
+  const handleKillGid = async (gid: number) => {
+    setIsExecutingAction(true);
+    await ransomWatchAdapter.dispatchControlledAction('TERMINATE_GID', gid);
+    setIsExecutingAction(false);
+    setActionSuccessMsg(`Driver signal dispatched: GID ${gid} terminated.`);
+    setTimeout(() => setActionSuccessMsg(null), 3000);
+  };
+
+  const handleRestoreSnapshot = async (gid: number) => {
+    setIsExecutingAction(true);
+    await ransomWatchAdapter.dispatchControlledAction('RESTORE_SNAPSHOT', gid);
+    setIsExecutingAction(false);
+    setActionSuccessMsg(`Azure snapshot rollback completed for GID ${gid}.`);
+    setTimeout(() => setActionSuccessMsg(null), 3000);
   };
 
   return (
@@ -59,299 +82,213 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-white tracking-tight">
-                RansomWatch Kernel & Desktop Monitor
-              </h2>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50">
-                Driver Port: \RWFilterPort
+              <h1 className="text-xl font-bold text-white tracking-tight">RansomWatch Kernel-Mode Defense Center</h1>
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-semibold">
+                DRIVER LOADED &bull; FsFilter.sys
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Observing Windows File System Minifilter <code className="text-cyan-300">FsFilter.sys</code> + C++/CLI User-Mode Engine
+            <p className="text-xs text-slate-400 mt-0.5">
+              Live telemetry on communication port <code className="text-cyan-300 font-mono">\\RWFilterPort</code> with real-time Shannon entropy monitoring.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+        {/* Action Controls */}
+        <div className="flex items-center gap-2">
+          {actionSuccessMsg && (
+            <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-800 flex items-center gap-1.5 animate-pulse">
+              <Check className="w-3.5 h-3.5" />
+              {actionSuccessMsg}
+            </span>
+          )}
           <button
             onClick={onTriggerTestAttack}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white shadow-glow-red transition-all active:scale-95"
+            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-1.5 transition-all"
           >
-            <Play className="w-3.5 h-3.5" />
-            <span>Test Honeypot Detection & Rollback</span>
+            <Play className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Simulate Test Attack</span>
           </button>
         </div>
       </div>
 
-      {/* Top Grid: Protected Folders & Honeypot Traps */}
+      {/* Top Grid: Tracked Process Groups & Honeypot Traps */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Monitored Directories */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+        {/* Left 2 Columns: Process Family & GID Tracking */}
+        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FolderLock className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-bold text-white">Protected Directories</h3>
+              <Layers className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-base font-bold text-white">Tracked Process Groups (GIDs)</h2>
             </div>
-            <span className="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded">
-              {directories.length} Active
+            <span className="text-xs text-slate-400 font-mono">
+              {processes.length} Active Process Families
             </span>
           </div>
 
-          <div className="space-y-2">
-            {directories.map((dir, idx) => (
-              <div key={idx} className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-xs font-mono text-slate-300 flex items-center justify-between">
-                <span className="truncate" title={dir}>{dir}</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-              </div>
-            ))}
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400">
-            💡 Directories registered with <code className="text-cyan-300">MESSAGE_ADD_SCAN_DIRECTORY</code> to kernel filter.
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 pb-2">
+                  <th className="py-2.5 font-semibold">GID / Main PID</th>
+                  <th className="py-2.5 font-semibold">Process Name</th>
+                  <th className="py-2.5 font-semibold">Entropy</th>
+                  <th className="py-2.5 font-semibold">Status</th>
+                  <th className="py-2.5 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {processes.map((p) => (
+                  <tr key={p.gid} className="hover:bg-slate-900/50 transition-colors">
+                    <td className="py-3 text-cyan-300">
+                      GID: {p.gid} <span className="text-slate-500">({p.mainPid})</span>
+                    </td>
+                    <td className="py-3 text-slate-200 font-sans font-medium">
+                      {p.name}
+                    </td>
+                    <td className="py-3">
+                      <span className={`px-2 py-0.5 rounded ${
+                        p.entropy > 7.5 ? 'bg-rose-500/20 text-rose-300 font-bold' : 'bg-slate-800 text-slate-300'
+                      }`}>
+                        {p.entropy.toFixed(2)} / 8.0
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        p.status === 'TERMINATED' ? 'bg-slate-800 text-slate-400 border border-slate-700' :
+                        p.status === 'MALICIOUS' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse' :
+                        'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                      }`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right">
+                      {p.status !== 'TERMINATED' && (
+                        <button
+                          onClick={() => handleKillGid(p.gid)}
+                          disabled={isExecutingAction}
+                          className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/40 text-rose-300 text-[11px] font-medium transition-all"
+                        >
+                          Kill GID
+                        </button>
+                      )}
+                      {p.status === 'TERMINATED' && (
+                        <span className="text-slate-500 text-[11px]">Contained</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Honeypot Trap Files Deployed */}
-        <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertOctagon className="w-4 h-4 text-amber-400" />
-              <div>
-                <h3 className="text-sm font-bold text-white">Honeypot Trap Files (TrapHandler.cpp)</h3>
-                <p className="text-[11px] text-slate-400">Autonomously placed to lure and detect encryption attempts</p>
+        {/* Right 1 Column: Honeypot Canary Traps */}
+        <div className="glass-panel p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FolderLock className="w-5 h-5 text-purple-400" />
+                <h2 className="text-base font-bold text-white">Canary Bait Traps</h2>
               </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-mono">
+                {traps.filter(t => t.state === 'ARMED').length} Armed
+              </span>
             </div>
-            <span className="text-[11px] font-mono text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded">
-              {traps.length} Armed
-            </span>
+
+            <p className="text-xs text-slate-400">
+              Trap files planted by <code className="text-purple-300">TrapHandler.cpp</code> to trip ransomware early.
+            </p>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {traps.map((trap) => (
+                <div key={trap.id} className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {getTrapIcon(trap.category)}
+                    <span className="text-slate-200 truncate font-mono text-[11px]">{trap.path.split('\\').pop()}</span>
+                  </div>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono uppercase shrink-0">
+                    {trap.state}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {traps.map((trap) => (
-              <div 
-                key={trap.id}
-                className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 flex items-start gap-3 hover:border-slate-700 transition-all"
-              >
-                <div className="p-2 rounded-lg bg-slate-800/80 shrink-0">
-                  {getTrapIcon(trap.category)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">{trap.extension} Trap</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      trap.state === 'ARMED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' : 'bg-rose-950 text-rose-400'
-                    }`}>
-                      {trap.state}
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-mono text-slate-400 truncate mt-1" title={trap.path}>
-                    {trap.path}
-                  </p>
-                </div>
-              </div>
-            ))}
+          <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-500 font-mono">
+            <span>Instant Trigger &bull; Automatic Process-Group Kill</span>
           </div>
         </div>
 
       </div>
 
-      {/* Middle Section: Active Process GID Tracker */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
+      {/* Bottom Section: RansomWatch Incident Reports & Cloud Rollback */}
+      <div className="glass-panel p-6 rounded-2xl space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-cyan-400" />
-            <div>
-              <h3 className="text-sm font-bold text-white">Active GID Process Tracking (ProcessesMemory)</h3>
-              <p className="text-[11px] text-slate-400">Parent-child lineage grouped by driver via PsSetCreateProcessNotifyRoutine</p>
-            </div>
+            <Terminal className="w-5 h-5 text-cyan-400" />
+            <h2 className="text-base font-bold text-white">RansomWatch Incident Forensics & Cloud Rollback</h2>
           </div>
-          <span className="text-[11px] font-mono text-cyan-400">
-            {processes.length} Processes Tracked
+          <span className="text-xs text-slate-400 font-mono">
+            Parsed from <code className="text-cyan-300">C:\Report*.log</code>
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-                <th className="pb-3 px-3">GID / Process</th>
-                <th className="pb-3 px-3">Status</th>
-                <th className="pb-3 px-3">Shannon Entropy</th>
-                <th className="pb-3 px-3">IRP Operations</th>
-                <th className="pb-3 px-3">Changed / Created</th>
-                <th className="pb-3 px-3">Detected Triggers</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono">
-              {processes.map((proc) => (
-                <tr key={proc.gid} className={`hover:bg-slate-800/30 transition-colors ${
-                  proc.status === 'TERMINATED' ? 'bg-rose-950/20' : ''
-                }`}>
-                  <td className="py-3 px-3">
-                    <div className="font-bold text-white">{proc.name}</div>
-                    <div className="text-[11px] text-slate-400">
-                      GID: <strong className="text-cyan-300">{proc.gid}</strong> | Main PID: {proc.mainPid} (PIDs: {proc.pids.join(', ')})
-                    </div>
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      proc.status === 'TERMINATED'
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                        : proc.status === 'MALICIOUS'
-                        ? 'bg-rose-600 text-white animate-pulse'
-                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    }`}>
-                      {proc.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold ${proc.entropy > 7.0 ? 'text-rose-400' : 'text-slate-200'}`}>
-                        {proc.entropy.toFixed(2)} / 8.0
-                      </span>
-                      <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${proc.entropy > 7.0 ? 'bg-rose-500' : 'bg-emerald-400'}`}
-                          style={{ width: `${(proc.entropy / 8.0) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300 font-semibold">
-                    {proc.irpCount.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">
-                    <span className="text-rose-400 font-bold">{proc.changedFilesCount} modified</span> / <span className="text-amber-400">{proc.createdFilesCount} created</span>
-                  </td>
-                  <td className="py-3 px-3">
-                    {proc.detectedTriggers.length > 0 ? (
-                      <div className="space-y-1">
-                        {proc.detectedTriggers.map((t, idx) => (
-                          <span key={idx} className="inline-block text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800/60 mr-1">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-slate-500 text-[11px]">Normal Operations</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        {reports.length > 0 && selectedReport && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+            
+            {/* Incident Summary Card */}
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">{selectedReport.id}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold">
+                  GID {selectedReport.gid}
+                </span>
+              </div>
 
-      {/* Bottom Section: RansomWatch Incident Report Viewer (C:\Report*.log) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Report List */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-bold text-white">Incident Reports Log</h3>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400">C:\Report*.log</span>
-          </div>
+              <div className="space-y-1 text-xs font-mono">
+                <div className="text-slate-400">Process: <strong className="text-slate-200 font-sans">{selectedReport.processName}</strong></div>
+                <div className="text-slate-400">PIDs: <span className="text-slate-300">{selectedReport.pids.join(', ')}</span></div>
+                <div className="text-slate-400">Started: <span className="text-slate-300">{new Date(selectedReport.startTime).toLocaleTimeString()}</span></div>
+                <div className="text-slate-400">Driver Kill: <span className="text-rose-400 font-bold">{new Date(selectedReport.killTime).toLocaleTimeString()}</span></div>
+              </div>
 
-          <div className="space-y-2">
-            {reports.map((report) => (
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Cloud Snapshot:</span>
+                <span className="text-xs font-semibold text-emerald-400 font-mono">SUCCESS (Azure)</span>
+              </div>
+
               <button
-                key={report.id}
-                onClick={() => setSelectedReport(report)}
-                className={`w-full p-3 rounded-xl text-left border transition-all ${
-                  selectedReport.id === report.id
-                    ? 'bg-cyan-950/60 border-cyan-500 text-white shadow-glow-cyan'
-                    : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                }`}
+                onClick={() => handleRestoreSnapshot(selectedReport.gid)}
+                disabled={isExecutingAction}
+                className="w-full py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold font-mono text-cyan-300">
-                    C:\Report{report.gid}.log
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-semibold">
-                    {report.restoreStatus}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-300 truncate">
-                  Process: {report.processName}
-                </div>
-                <div className="text-[10px] text-slate-500 mt-1 font-mono">
-                  {new Date(report.startTime).toLocaleTimeString()} &bull; {report.changedFiles.length} files affected
-                </div>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Verify & Rollback Encrypted Files</span>
               </button>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Report Details & Azure Rollback Explorer */}
-        <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-emerald-400" />
-              <div>
-                <h3 className="text-sm font-bold text-white">
-                  Report Detail & Azure Blob Rollback: <code className="text-cyan-300">C:\Report{selectedReport.gid}.log</code>
-                </h3>
-                <p className="text-[11px] text-slate-400">Generated by RansomWatch CheckHandleMaliciousApplication()</p>
+            {/* Affected Files List */}
+            <div className="lg:col-span-2 p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-200">Impacted Files Intercepted ({selectedReport.changedFiles.length})</span>
+                <span className="text-slate-500 font-mono">Protected by FsFilter</span>
+              </div>
+
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 font-mono text-[11px]">
+                {selectedReport.changedFiles.map((file, fIdx) => (
+                  <div key={fIdx} className="p-2 rounded bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-rose-300 truncate max-w-md">{file}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800 shrink-0">
+                      RESTORE READY
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>Snapshot Restored</span>
-            </span>
+
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
-            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 text-[10px] uppercase block mb-1">Target Executable</span>
-              <span className="text-white font-bold">{selectedReport.processName}</span>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 text-[10px] uppercase block mb-1">Driver Kill Status</span>
-              <span className="text-rose-400 font-bold">Killed via MESSAGE_KILL_GID</span>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 text-[10px] uppercase block mb-1">Azure Backup Snapshot</span>
-              <span className="text-emerald-400 font-bold">Valid & Restored</span>
-            </div>
-          </div>
-
-          {/* Changed Files */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-300">
-              Encrypted / Changed Files ({selectedReport.changedFiles.length}):
-            </h4>
-            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 font-mono text-[11px] text-rose-300 space-y-1 max-h-36 overflow-y-auto">
-              {selectedReport.changedFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <span className="text-rose-500">&bull;</span>
-                  <span className="truncate">{file}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Created Files (Ransom Notes) */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-300">
-              Ransom Notes Created ({selectedReport.createdFiles.length}):
-            </h4>
-            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 font-mono text-[11px] text-amber-300 space-y-1">
-              {selectedReport.createdFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <span className="text-amber-500">&bull;</span>
-                  <span className="truncate">{file}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
+        )}
       </div>
 
     </div>

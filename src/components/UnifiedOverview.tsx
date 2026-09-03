@@ -13,14 +13,18 @@ import {
   Sparkles, 
   AlertTriangle,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Activity,
+  Terminal,
+  Radio
 } from 'lucide-react';
-import { SecurityMetrics, CorrelatedIncident, IrpTelemetryEvent } from '../types';
+import { SecurityMetrics, CorrelatedIncident, IrpTelemetryEvent, LiveEndpointEvent } from '../types';
 
 interface UnifiedOverviewProps {
   metrics: SecurityMetrics;
   incidents: CorrelatedIncident[];
   recentIrps: IrpTelemetryEvent[];
+  endpointEvents?: LiveEndpointEvent[];
   onSelectIncident: (incident: CorrelatedIncident) => void;
   onNavigateTab: (tab: 'ransomwatch' | 'breachguard' | 'copilot') => void;
   onSimulateAttack: () => void;
@@ -30,6 +34,7 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
   metrics,
   incidents,
   recentIrps,
+  endpointEvents = [],
   onSelectIncident,
   onNavigateTab,
   onSimulateAttack
@@ -57,22 +62,25 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
                   <span className="text-xs text-rose-300 font-mono">
                     {new Date(primaryIncident.timestamp).toLocaleTimeString()}
                   </span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-rose-950/60 border border-rose-800/80 text-rose-300 font-mono">
+                    GID: {primaryIncident.linkedGid}
+                  </span>
                 </div>
-                <h2 className="text-lg font-bold text-white tracking-tight">
+                <h3 className="text-lg font-bold text-white tracking-tight">
                   {primaryIncident.title}
-                </h2>
+                </h3>
                 <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
                   {primaryIncident.correlationSummary}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0 w-full lg:w-auto justify-end">
+            <div className="flex items-center gap-3 shrink-0 self-end lg:self-center">
               <button
                 onClick={() => onSelectIncident(primaryIncident)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-rose-500 hover:bg-rose-400 text-white shadow-glow-red transition-all active:scale-95"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg shadow-rose-600/30 flex items-center gap-2 transition-all"
               >
-                <span>Inspect Attack Chain</span>
+                <span>Investigate RCA</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -80,290 +88,240 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
         </div>
       )}
 
-      {/* Main KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Card 1: Composite Risk Score */}
-        <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+        {/* Composite Enterprise Risk Card */}
+        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Composite Risk</span>
-            <Flame className={`w-4 h-4 ${metrics.compositeRiskScore > 50 ? 'text-rose-400' : 'text-emerald-400'}`} />
-          </div>
-          <div className="my-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black font-mono text-white">{metrics.compositeRiskScore}</span>
-              <span className="text-xs font-medium text-slate-400">/ 100</span>
+            <span className="text-xs text-slate-400 font-medium">Enterprise Risk Score</span>
+            <div className={`p-2 rounded-xl border ${
+              metrics.compositeRiskScore > 70 ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' :
+              metrics.compositeRiskScore > 35 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+              'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            }`}>
+              <Flame className="w-5 h-5" />
             </div>
-            <div className="w-full bg-slate-800/80 rounded-full h-2 mt-2 overflow-hidden">
+          </div>
+          <div className="mt-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-white font-mono tracking-tight">
+                {metrics.compositeRiskScore}
+              </span>
+              <span className="text-xs text-slate-500 font-mono">/ 100</span>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
               <div 
-                className={`h-full transition-all duration-500 ${
-                  metrics.compositeRiskScore > 70 
-                    ? 'bg-gradient-to-r from-amber-500 to-rose-500' 
-                    : metrics.compositeRiskScore > 40 
-                    ? 'bg-gradient-to-r from-cyan-500 to-amber-500' 
-                    : 'bg-emerald-500'
+                className={`h-full rounded-full transition-all duration-500 ${
+                  metrics.compositeRiskScore > 70 ? 'bg-gradient-to-r from-amber-500 to-rose-500' :
+                  metrics.compositeRiskScore > 35 ? 'bg-gradient-to-r from-cyan-500 to-amber-500' :
+                  'bg-gradient-to-r from-emerald-500 to-cyan-500'
                 }`}
                 style={{ width: `${metrics.compositeRiskScore}%` }}
               />
             </div>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
-            Posture: <strong className="text-white">{metrics.threatLevel}</strong>
-          </span>
+          <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Threat Level: <strong className="text-slate-200">{metrics.threatLevel}</strong></span>
+            <span className="text-slate-500">Deterministic Model</span>
+          </div>
         </div>
 
-        {/* Card 2: Active Ransomware Threats */}
-        <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+        {/* Active Ransomware Threats */}
+        <div 
+          onClick={() => onNavigateTab('ransomwatch')}
+          className="glass-panel p-5 rounded-2xl hover:border-cyan-500/50 cursor-pointer transition-all flex flex-col justify-between group"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ransomware GIDs</span>
-            <Cpu className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs text-slate-400 font-medium">RansomWatch Protection</span>
+            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 group-hover:scale-110 transition-all">
+              <Cpu className="w-5 h-5" />
+            </div>
           </div>
-          <div className="my-2">
+          <div className="mt-4">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black font-mono text-cyan-400">
-                {metrics.activeRansomwareThreats > 0 ? metrics.activeRansomwareThreats : '0'}
+              <span className="text-3xl font-extrabold text-white font-mono">
+                {metrics.activeRansomwareThreats > 0 ? `${metrics.activeRansomwareThreats} Threat` : 'Protected'}
               </span>
-              <span className="text-xs text-emerald-400 font-semibold">
-                (1 Blocked)
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Kernel Minifilter <code className="text-cyan-300 font-mono text-[11px]">FsFilter.sys</code> active
+            </p>
+          </div>
+          <div className="mt-3 text-[11px] text-cyan-400 flex items-center gap-1 font-semibold">
+            <span>Inspect Live Driver</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-all" />
+          </div>
+        </div>
+
+        {/* Exposed Identity Credentials */}
+        <div 
+          onClick={() => onNavigateTab('breachguard')}
+          className="glass-panel p-5 rounded-2xl hover:border-indigo-500/50 cursor-pointer transition-all flex flex-col justify-between group"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium">Breached Identities</span>
+            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 group-hover:scale-110 transition-all">
+              <Lock className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-white font-mono">
+                {metrics.activeBreachedAccounts}
               </span>
+              <span className="text-xs text-slate-500">Accounts Flagged</span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Kernel <code className="text-cyan-300">FsFilter.sys</code> Active
+            <p className="text-xs text-slate-400 mt-1">
+              Zero-Knowledge k-Anonymity & Exposure Maps
             </p>
           </div>
-          <button 
-            onClick={() => onNavigateTab('ransomwatch')}
-            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
-          >
-            <span>View Process Tree</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
+          <div className="mt-3 text-[11px] text-indigo-400 flex items-center gap-1 font-semibold">
+            <span>Manage Identities & GDPR</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-all" />
+          </div>
         </div>
 
-        {/* Card 3: Breached Accounts */}
-        <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+        {/* Automated Recovery Status */}
+        <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Breached Accounts</span>
-            <UserX className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="my-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black font-mono text-indigo-400">{metrics.activeBreachedAccounts}</span>
-              <span className="text-xs text-slate-400">Identities</span>
+            <span className="text-xs text-slate-400 font-medium">Cloud Rollback Health</span>
+            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              <RotateCcw className="w-5 h-5" />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              k-Anonymity Verified
+          </div>
+          <div className="mt-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-white font-mono">
+                {metrics.recoveredFilesCount}
+              </span>
+              <span className="text-xs text-slate-500">Files Recovered</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Azure Snapshot Rollback: <strong className="text-emerald-400">Armed & Syncing</strong>
             </p>
           </div>
-          <button 
-            onClick={() => onNavigateTab('breachguard')}
-            className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
-          >
-            <span>Launch Scanner</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
-        </div>
-
-        {/* Card 4: Kernel IRP Operations */}
-        <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">IRP Operations</span>
-            <Layers className="w-4 h-4 text-emerald-400" />
+          <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>{metrics.protectedDirectories} Protected Paths</span>
+            <span className="text-emerald-400 font-mono">100% Intact</span>
           </div>
-          <div className="my-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black font-mono text-emerald-400">{metrics.totalIrpsProcessed.toLocaleString()}</span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Shannon Entropy Monitored
-            </p>
-          </div>
-          <span className="text-[11px] text-slate-400">
-            Buffer: <strong className="text-emerald-400">Healthy (0ms delay)</strong>
-          </span>
-        </div>
-
-        {/* Card 5: Auto-Restored Files */}
-        <div className="glass-panel p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Restored Files</span>
-            <RotateCcw className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="my-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black font-mono text-sky-400">{metrics.recoveredFilesCount}</span>
-              <span className="text-xs text-slate-400">Files</span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Azure Blob Snapshot Rollback
-            </p>
-          </div>
-          <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>0 Data Loss</span>
-          </span>
         </div>
 
       </div>
 
-      {/* Middle Section: Architecture & Correlated Attack Flow */}
+      {/* Main Two-Column SOC Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left 2 Cols: Attack Vector Flow Pipeline */}
-        <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-              <div>
-                <h3 className="text-sm font-bold text-white tracking-tight">
-                  Autonomous Threat Correlation Pipeline
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Real-time synchronization between Breach Guard identity signals and RansomWatch kernel traps
-                </p>
-              </div>
+        {/* Left 2 Columns: Live Endpoint Activity Feed */}
+        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Radio className="w-5 h-5 text-cyan-400 animate-pulse" />
+              <h2 className="text-base font-bold text-white tracking-tight">Live Endpoint Activity Feed</h2>
             </div>
-            <span className="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-2.5 py-1 rounded-md border border-cyan-800/60">
-              Agent State: ACTIVE
-            </span>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                Kernel Driver Stream: LIVE
+              </span>
+            </div>
           </div>
 
-          {/* Visual Attack Chain Stages */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
-            
-            {/* Stage 1: Breach Guard */}
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-indigo-500/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded">
-                  1. Identity Leak
-                </span>
-                <Lock className="w-3.5 h-3.5 text-indigo-400" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Breach Guard Signal</h4>
-              <p className="text-[11px] text-slate-300">
-                <code className="text-indigo-300">admin@enterprise-corp.com</code> dumped in dark web leak with plaintext password hash.
-              </p>
-              <div className="text-[10px] text-slate-400 font-mono">
-                Source: XposedOrNot + HIBP
-              </div>
-            </div>
+          <p className="text-xs text-slate-400">
+            Real-time I/O request packet telemetry intercepted by <span className="text-cyan-300 font-mono">FsFilter.sys</span> across system shares.
+          </p>
 
-            {/* Stage 2: Infiltration */}
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-amber-500/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded">
-                  2. Infiltration
-                </span>
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Credential Re-use</h4>
-              <p className="text-[11px] text-slate-300">
-                Threat actor authenticated via SMB service, spawning dropper <code className="text-amber-300">svchost_updater.exe</code>.
-              </p>
-              <div className="text-[10px] text-slate-400 font-mono">
-                Lineage: GID 1042 (PID 8492)
-              </div>
-            </div>
+          <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+            {recentIrps.map((irp) => {
+              let tag = 'FILE MODIFIED';
+              let badgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
 
-            {/* Stage 3: RansomWatch Trap */}
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-rose-500/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-rose-400 bg-rose-950 px-2 py-0.5 rounded">
-                  3. RansomWatch Catch
-                </span>
-                <Cpu className="w-3.5 h-3.5 text-rose-400" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Entropy & Trap Trip</h4>
-              <p className="text-[11px] text-slate-300">
-                High entropy (<strong>7.94</strong>) write detected on honeypot <code className="text-rose-300">!00_financial.xlsx</code>.
-              </p>
-              <div className="text-[10px] text-rose-400 font-mono">
-                Driver Action: KILL_GID 1042
-              </div>
-            </div>
+              if (irp.isTrap) {
+                tag = 'CANARY TRIGGERED';
+                badgeColor = 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse';
+              } else if (irp.entropy > 7.5) {
+                tag = 'ENTROPY ANOMALY';
+                badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+              } else if (irp.irpType === 'IRP_MJ_CREATE') {
+                tag = 'FILE CREATED';
+                badgeColor = 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30';
+              } else if (irp.irpType === 'IRP_MJ_SET_INFORMATION') {
+                tag = 'FILE RENAMED';
+                badgeColor = 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30';
+              }
 
-            {/* Stage 4: Cloud Rollback */}
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-emerald-500/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded">
-                  4. Automated Rollback
-                </span>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Azure Snapshot Restore</h4>
-              <p className="text-[11px] text-slate-300">
-                18 modified files restored to pre-attack snapshot state via Azure Storage API.
-              </p>
-              <div className="text-[10px] text-emerald-400 font-mono">
-                Status: SUCCESS (100%)
-              </div>
-            </div>
+              return (
+                <div 
+                  key={irp.id}
+                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono transition-all ${
+                    irp.isTrap ? 'bg-rose-950/20 border-rose-500/40' : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-900/90'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase shrink-0 ${badgeColor}`}>
+                      {tag}
+                    </span>
+                    <span className="text-slate-200 truncate font-sans text-xs">
+                      {irp.filePath}
+                    </span>
+                  </div>
 
+                  <div className="flex items-center gap-3 shrink-0 text-[11px] text-slate-400">
+                    <span className="hidden sm:inline text-slate-500">
+                      GID: <strong className="text-slate-300">{irp.gid}</strong>
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded ${
+                      irp.entropy > 7.5 ? 'bg-rose-500/20 text-rose-300 font-bold' : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      H: {irp.entropy.toFixed(2)}
+                    </span>
+                    <span className="text-slate-500">{irp.timestamp}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Quick CTA to AI Copilot */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-            <span className="text-xs text-slate-300">
-              Want a natural-language breakdown and executive report of this incident?
-            </span>
-            <button
-              onClick={() => onNavigateTab('copilot')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 transition-all"
-            >
-              <span>Ask AI Copilot</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+          <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-2 border-t border-slate-800/60">
+            <span>Shannon Entropy Window: 0.0 - 8.0</span>
+            <span>Driver Intercept Rate: ~450 IRPs/sec</span>
           </div>
         </div>
 
-        {/* Right 1 Col: Live Kernel IRP Telemetry Feed */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
+        {/* Right 1 Column: AI SOC Copilot Quick Assist */}
+        <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-                <h3 className="text-sm font-bold text-white">Live IRP Telemetry</h3>
+                <Sparkles className="w-5 h-5 text-indigo-400" />
+                <h3 className="font-bold text-white text-sm">AI SOC Orchestrator</h3>
               </div>
-              <span className="text-[10px] font-mono text-slate-400">FilterSendMessage Stream</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-mono">
+                Active
+              </span>
             </div>
 
-            <div className="space-y-2 font-mono text-[11px]">
-              {recentIrps.slice(0, 5).map((irp) => (
-                <div 
-                  key={irp.id}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    irp.entropy > 7.0 
-                      ? 'bg-rose-950/40 border-rose-800/80 text-rose-200' 
-                      : irp.isTrap
-                      ? 'bg-amber-950/40 border-amber-800/80 text-amber-200'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] opacity-80 mb-1">
-                    <span>{irp.timestamp}</span>
-                    <span className="font-bold">{irp.irpType}</span>
-                  </div>
-                  <div className="truncate text-slate-200 font-semibold" title={irp.filePath}>
-                    {irp.filePath}
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] mt-1 text-slate-400">
-                    <span>PID: {irp.pid} (GID: {irp.gid})</span>
-                    <span className={irp.entropy > 7.0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
-                      Entropy: {irp.entropy}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Autonomous cross-domain correlation between kernel-level process anomalies and public credential exposures.
+            </p>
+
+            <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs">
+              <div className="text-indigo-300 font-semibold text-[11px] uppercase tracking-wider">
+                Active Attack Chain Analysis
+              </div>
+              <p className="text-slate-300 text-xs">
+                Credential leak (<code className="text-indigo-400">admin@corp</code>) &rarr; Lateral RDP &rarr; GID 1042 execution &rarr; Driver killswitch triggered.
+              </p>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
-            <span className="text-[11px] text-slate-400">Driver Port: <code className="text-cyan-300">\RWFilterPort</code></span>
+          <div className="space-y-2 pt-3 border-t border-slate-800">
             <button
-              onClick={() => onNavigateTab('ransomwatch')}
-              className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
+              onClick={() => onNavigateTab('copilot')}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg transition-all"
             >
-              Full Stream &rarr;
+              <span>Open Interactive AI SOC Triage</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
