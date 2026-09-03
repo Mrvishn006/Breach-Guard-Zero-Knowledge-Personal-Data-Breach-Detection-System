@@ -42,7 +42,7 @@ export interface RansomWatchTrap {
   path: string;
   extension: string;
   category: 'DOCUMENT' | 'IMAGE' | 'ARCHIVE' | 'DATABASE';
-  state: 'ARMED' | 'TRIGGERED' | 'RESTORED';
+  state: 'ARMED' | 'TRIGGERED' | 'RESTORED' | 'NOT_DEPLOYED';
   lastModified?: string;
 }
 
@@ -70,6 +70,7 @@ export interface IrpTelemetryEvent {
   filePath: string;
   entropy: number;
   isTrap: boolean;
+  source?: 'KERNEL_RANSOMWATCH' | 'USER_MODE_FALLBACK' | string;
 }
 
 // --- Breach Guard Data Models ---

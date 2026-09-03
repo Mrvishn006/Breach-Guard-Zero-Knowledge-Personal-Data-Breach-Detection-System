@@ -10,7 +10,7 @@ import { AICopilot } from './components/AICopilot';
 import { CorrelatedIncidentModal } from './components/CorrelatedIncidentModal';
 
 import { SecurityMetrics, CorrelatedIncident, IrpTelemetryEvent, LiveEndpointEvent, AIChatMessage, EmailBreachResult } from './types';
-import { ransomWatchAdapter } from './adapters/ransomwatch-adapter';
+import { ransomWatchAdapter, DriverStateInfo } from './adapters/ransomwatch-adapter';
 import { breachGuardAdapter } from './adapters/breachguard-adapter';
 import { aiAgentOrchestrator } from './services/ai-agent-orchestrator';
 
@@ -29,11 +29,25 @@ export function App() {
   const [breachHistory, setBreachHistory] = useState<EmailBreachResult[]>(breachGuardAdapter.getHistory());
   const [isTelemetryLive, setIsTelemetryLive] = useState(false);
 
-  // RansomWatch data
+  // Dynamic Driver & RansomWatch State
+  const [driverState, setDriverState] = useState<DriverStateInfo>(ransomWatchAdapter.getDriverState());
   const [processes, setProcesses] = useState(ransomWatchAdapter.getTrackedProcesses());
   const [traps, setTraps] = useState(ransomWatchAdapter.getTraps());
   const [reports, setReports] = useState(ransomWatchAdapter.getReports());
   const [directories, setDirectories] = useState(ransomWatchAdapter.getProtectedDirectories());
+
+  const refreshDriverState = async () => {
+    const updated = await ransomWatchAdapter.checkRealDriverStatus();
+    setDriverState(updated);
+    refreshOrchestrator();
+  };
+
+  // Check driver state and metadata on mount
+  useEffect(() => {
+    refreshDriverState();
+    const interval = setInterval(refreshDriverState, 8000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Subscribe to real-time WebSocket telemetry from RansomWatch Bridge
   useEffect(() => {
@@ -57,6 +71,7 @@ export function App() {
     setProcesses(ransomWatchAdapter.getTrackedProcesses());
     setTraps(ransomWatchAdapter.getTraps());
     setReports(ransomWatchAdapter.getReports());
+    setDirectories(ransomWatchAdapter.getProtectedDirectories());
   };
 
   const handleSendMessage = async (query: string) => {
@@ -147,6 +162,9 @@ export function App() {
     }
   };
 
+  const armedCanariesCount = traps.filter(t => t.state === 'ARMED').length;
+  const telemetryStatus = ransomWatchAdapter.getTelemetryStatus();
+
   return (
     <div className="min-h-screen bg-[#F7F8FA] text-slate-800 flex flex-col font-sans selection:bg-brand-500/20 selection:text-brand-900">
       
@@ -172,6 +190,8 @@ export function App() {
             uptimeText="Active"
             lastUpdateText={new Date().toLocaleTimeString()}
             isTelemetryLive={isTelemetryLive}
+            driverStatus={driverState.serviceState}
+            armedCanariesCount={armedCanariesCount}
           />
 
           {/* Central Main Content View Container */}
@@ -200,6 +220,8 @@ export function App() {
                 directories={directories}
                 recentIrps={recentIrps}
                 onTriggerTestAttack={() => {}}
+                driverState={driverState}
+                onRefreshDriverState={refreshDriverState}
               />
             )}
 
@@ -239,11 +261,10 @@ export function App() {
         onMitigate={handleMitigateIncident}
       />
 
-      {/* Bottom System Status Bar */}
+      {/* Bottom System Status Bar with Dynamic Real Driver & Telemetry States */}
       <StatusBarBottom 
-        isDriverActive={true}
-        isRansomWatchActive={true}
-        isTelemetryLive={isTelemetryLive}
+        driverStatus={driverState.serviceState}
+        telemetryStatus={telemetryStatus}
       />
 
     </div>

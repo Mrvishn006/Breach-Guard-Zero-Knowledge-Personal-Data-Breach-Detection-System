@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { execSync } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 
 const DEFAULT_PORT = process.env.BRIDGE_PORT ? parseInt(process.env.BRIDGE_PORT, 10) : 5174;
@@ -30,18 +31,67 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // Per 1 minute
 
 // RansomWatch Monitored Protected Directories & Honeypot Traps
 const testDir = `${systemDrive}\\BreachGuard-Test`;
+const liveTestDir = `${systemDrive}\\BreachGuard-Live-Test`;
 const protectedDirectories = [
   testDir,
+  liveTestDir,
   userDocs,
   path.join(userHome, 'Desktop')
 ];
 
 // Honeypot Canary definitions
 const honeypotTraps = [
-  { id: 'trap-1', path: path.join(userDocs, '!00_financial_2026.xlsx'), extension: '.xlsx', category: 'DOCUMENT', state: 'ARMED' },
-  { id: 'trap-2', path: path.join(testDir, '!00_canary_test.dat'), extension: '.dat', category: 'DOCUMENT', state: 'ARMED' },
-  { id: 'trap-3', path: path.join(userDocs, '!00_backup_key.zip'), extension: '.zip', category: 'ARCHIVE', state: 'ARMED' }
+  { id: 'trap-1', path: path.join(userDocs, '!00_financial_2026.xlsx'), extension: '.xlsx', category: 'DOCUMENT', state: 'NOT_DEPLOYED' },
+  { id: 'trap-2', path: path.join(testDir, '!00_canary_test.dat'), extension: '.dat', category: 'DOCUMENT', state: 'NOT_DEPLOYED' },
+  { id: 'trap-3', path: path.join(userDocs, '!00_backup_key.zip'), extension: '.zip', category: 'ARCHIVE', state: 'NOT_DEPLOYED' }
 ];
+
+// Refresh canary deployment state from actual disk presence
+function refreshCanaryStatus() {
+  for (const trap of honeypotTraps) {
+    if (fs.existsSync(trap.path)) {
+      if (trap.state !== 'TRIGGERED') {
+        trap.state = 'ARMED';
+      }
+    } else {
+      trap.state = 'NOT_DEPLOYED';
+    }
+  }
+}
+
+// Deploy safe decoy canary bait files
+function deployCanaryFiles() {
+  try {
+    if (!fs.existsSync(userDocs)) fs.mkdirSync(userDocs, { recursive: true });
+    if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
+
+    for (const trap of honeypotTraps) {
+      if (!fs.existsSync(trap.path)) {
+        fs.writeFileSync(trap.path, `BREACHGUARD_CANARY_BAIT_TRAP_${trap.id}_PROTECTED_SHARE_DECOY_DO_NOT_MODIFY`);
+      }
+    }
+    refreshCanaryStatus();
+    return { success: true, count: honeypotTraps.filter(t => t.state === 'ARMED').length };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+// Query real Windows driver state via sc query
+function getRealDriverState() {
+  try {
+    const scOut = execSync('cmd /c "sc query FsFilter"', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    if (scOut.includes('RUNNING')) {
+      return { installed: true, running: true, serviceState: 'RUNNING', driverName: 'FsFilter.sys', commPort: '\\\\RWFilterPort', isTestSigned: true };
+    } else if (scOut.includes('STOPPED')) {
+      return { installed: true, running: false, serviceState: 'STOPPED', driverName: 'FsFilter.sys', commPort: '\\\\RWFilterPort', isTestSigned: true };
+    }
+  } catch (e) {}
+  return { installed: false, running: false, serviceState: 'NOT_INSTALLED', driverName: 'FsFilter.sys', commPort: '\\\\RWFilterPort', isTestSigned: true };
+}
+
+// Initial canary check
+refreshCanaryStatus();
 
 // Clean Production State — ZERO Synthetic / Fake GIDs or Incidents
 let trackedProcesses = [];
@@ -222,18 +272,17 @@ function broadcastEvent(data) {
   }
 }
 
-// Real Filesystem Monitoring on configured paths (e.g. C:\BreachGuard-Test)
+// Real Filesystem Monitoring on configured paths
 function startRealFilesystemWatcher() {
   stopRealFilesystemWatcher();
 
-  // Ensure test directory exists for live validation
+  // Ensure test directories exist for live validation
   try {
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
+    if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
+    if (!fs.existsSync(liveTestDir)) fs.mkdirSync(liveTestDir, { recursive: true });
   } catch (e) {}
 
-  const dirsToWatch = [testDir, userDocs].filter(d => fs.existsSync(d));
+  const dirsToWatch = [testDir, liveTestDir, userDocs].filter(d => fs.existsSync(d));
 
   for (const targetDir of dirsToWatch) {
     try {
@@ -242,6 +291,7 @@ function startRealFilesystemWatcher() {
         const fullPath = path.join(targetDir, filename);
 
         // Check if genuine canary was touched
+        refreshCanaryStatus();
         const matchedTrap = honeypotTraps.find(t => t.path.toLowerCase() === fullPath.toLowerCase());
         const isTrap = !!matchedTrap;
         if (isTrap && matchedTrap) {
@@ -282,7 +332,8 @@ function startRealFilesystemWatcher() {
             irpType,
             filePath: fullPath,
             entropy,
-            isTrap
+            isTrap,
+            source: 'USER_MODE_FALLBACK'
           }
         };
 
@@ -320,16 +371,21 @@ function createHttpServer(port) {
 
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
-    // 1. Health & Backend Status
+    // 1. Health & Backend Status (Real Driver & Canary Verification)
     if (url.pathname === '/api/status' && req.method === 'GET') {
+      refreshCanaryStatus();
+      const driverState = getRealDriverState();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         ransomWatch: {
-          status: 'ONLINE',
-          driverLoaded: true,
-          commPort: '\\RWFilterPort',
+          status: driverState.running ? 'ONLINE' : 'STANDBY',
+          driverLoaded: driverState.running,
+          driverInstalled: driverState.installed,
+          driverServiceState: driverState.serviceState,
+          commPort: driverState.commPort,
           activeGids: trackedProcesses.length,
           trapsActive: honeypotTraps.filter(t => t.state === 'ARMED').length,
+          trapsTotal: honeypotTraps.length,
           lastTelemetry: new Date().toISOString()
         },
         breachGuard: {
@@ -352,13 +408,24 @@ function createHttpServer(port) {
 
     // 2. RansomWatch Protected Directories & Traps
     if (url.pathname === '/api/ransomwatch/metadata' && req.method === 'GET') {
+      refreshCanaryStatus();
+      const driverState = getRealDriverState();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
+        driverState,
         protectedDirectories,
         traps: honeypotTraps,
         trackedProcesses,
         reports: incidentReports
       }));
+      return;
+    }
+
+    // 2b. Deploy Decoy Canary Bait Files
+    if (url.pathname === '/api/ransomwatch/deploy-canaries' && req.method === 'POST') {
+      const deployResult = deployCanaryFiles();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(deployResult));
       return;
     }
 

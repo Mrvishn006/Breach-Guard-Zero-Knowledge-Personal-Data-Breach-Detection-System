@@ -285,15 +285,15 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
 
           <div>
             <div className="text-2xl font-extrabold text-slate-900">
-              {metrics.activeRansomwareThreats > 0 ? `${metrics.activeRansomwareThreats} Threat` : 'PROTECTED'}
+              {metrics.activeRansomwareThreats > 0 ? `${metrics.activeRansomwareThreats} Threat` : 'READY'}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Kernel Minifilter: <code className="text-brand-600 font-semibold font-mono text-[11px]">FsFilter.sys</code> (ACTIVE)
+              Kernel Minifilter: <code className="text-brand-600 font-semibold font-mono text-[11px]">FsFilter.sys</code>
             </p>
           </div>
 
           <div className="text-[11px] text-brand-600 flex items-center gap-1 font-semibold pt-1 border-t border-slate-100">
-            <span>Inspect Live Driver</span>
+            <span>Manage Driver & Canaries</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-all" />
           </div>
         </div>

@@ -128,12 +128,40 @@ ipcMain.handle('get-system-info', async () => {
 ipcMain.handle('check-driver-status', async () => {
   return new Promise((resolve) => {
     exec('sc query FsFilter', (err, stdout) => {
+      const raw = stdout || (err ? err.message : '');
       if (!err && stdout.includes('RUNNING')) {
-        resolve({ installed: true, running: true, raw: stdout });
+        resolve({ installed: true, running: true, serviceState: 'RUNNING', driverName: 'FsFilter.sys', commPort: '\\\\RWFilterPort', isTestSigned: true, raw });
       } else if (!err && stdout.includes('STOPPED')) {
-        resolve({ installed: true, running: false, raw: stdout });
+        resolve({ installed: true, running: false, serviceState: 'STOPPED', driverName: 'FsFilter.sys', commPort: '\\\\RWFilterPort', isTestSigned: true, raw });
       } else {
-        resolve({ installed: false, running: false, raw: stdout || err?.message });
+        resolve({ installed: false, running: false, serviceState: 'NOT_INSTALLED', driverName: 'FsFilter.sys', commPort: '\\\\RWFilterPort', isTestSigned: true, raw });
+      }
+    });
+  });
+});
+
+ipcMain.handle('install-driver-elevated', async () => {
+  const driverDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'driver')
+    : path.join(__dirname, '../driver');
+
+  const installCmd = path.join(driverDir, 'install_driver.cmd');
+  if (!fs.existsSync(installCmd)) {
+    return { success: false, error: 'Driver installation script (install_driver.cmd) not found.' };
+  }
+
+  return new Promise((resolve) => {
+    // Launch UAC elevated command prompt executing the installation batch file
+    const psCmd = `Start-Process cmd.exe -ArgumentList '/c', '\`"${installCmd}\`"' -Verb RunAs -Wait`;
+    exec(`powershell -Command "${psCmd}"`, (err) => {
+      if (err) {
+        resolve({ success: false, error: err.message });
+      } else {
+        // Query status after installation
+        exec('sc query FsFilter', (scErr, stdout) => {
+          const isRunning = !scErr && stdout && stdout.includes('RUNNING');
+          resolve({ success: isRunning, running: isRunning, raw: stdout });
+        });
       }
     });
   });

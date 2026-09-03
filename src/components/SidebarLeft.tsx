@@ -7,7 +7,7 @@ import {
   Lock, 
   Radio, 
   Activity, 
-  Clock,
+  Crosshair,
   HardDrive
 } from 'lucide-react';
 import { SecurityMetrics } from '../types';
@@ -21,6 +21,8 @@ interface SidebarLeftProps {
   uptimeText: string;
   lastUpdateText: string;
   isTelemetryLive: boolean;
+  driverStatus?: 'RUNNING' | 'STOPPED' | 'NOT_INSTALLED';
+  armedCanariesCount?: number;
 }
 
 export const SidebarLeft: React.FC<SidebarLeftProps> = ({
@@ -30,7 +32,9 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
   trackedProcessesCount,
   uptimeText,
   lastUpdateText,
-  isTelemetryLive
+  isTelemetryLive,
+  driverStatus = 'NOT_INSTALLED',
+  armedCanariesCount = 0
 }) => {
   // Threat Gauge calculation
   const score = metrics.compositeRiskScore;
@@ -90,12 +94,12 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
             System Status
           </span>
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-            isClean 
+            driverStatus === 'RUNNING' && isClean 
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-              : 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
+              : 'bg-amber-50 text-amber-700 border-amber-200'
           }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isClean ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-            {isClean ? 'PROTECTED' : 'ALERT'}
+            <span className={`w-1.5 h-1.5 rounded-full ${driverStatus === 'RUNNING' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+            {driverStatus === 'RUNNING' ? 'PROTECTED' : 'ACTION REQUIRED'}
           </span>
         </div>
 
@@ -104,10 +108,29 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
             <div className="flex items-center gap-2">
               <Cpu className="w-4 h-4 text-brand-500" />
-              <span className="font-medium text-slate-700">RansomWatch driver</span>
+              <span className="font-medium text-slate-700">RansomWatch Driver</span>
             </div>
-            <span className="font-mono text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-              FsFilter.sys
+            <span className={`font-mono text-[10px] font-semibold px-2 py-0.5 rounded border ${
+              driverStatus === 'RUNNING' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' :
+              driverStatus === 'STOPPED' ? 'text-amber-600 bg-amber-50 border-amber-200' :
+              'text-rose-600 bg-rose-50 border-rose-200'
+            }`}>
+              {driverStatus === 'RUNNING' ? 'FsFilter.sys' : driverStatus === 'STOPPED' ? 'STOPPED' : 'NOT INSTALLED'}
+            </span>
+          </div>
+
+          {/* Canary Bait Traps */}
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+            <div className="flex items-center gap-2">
+              <Crosshair className="w-4 h-4 text-brand-500" />
+              <span className="font-medium text-slate-700">Canary Honeypots</span>
+            </div>
+            <span className={`font-mono text-[10px] font-semibold px-2 py-0.5 rounded border ${
+              armedCanariesCount > 0 
+                ? 'text-emerald-600 bg-emerald-50 border-emerald-200' 
+                : 'text-slate-500 bg-slate-100 border-slate-200'
+            }`}>
+              {armedCanariesCount > 0 ? `${armedCanariesCount} ARMED` : 'NOT DEPLOYED'}
             </span>
           </div>
 
@@ -117,7 +140,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
               <Lock className="w-4 h-4 text-indigo-500" />
               <span className="font-medium text-slate-700">ZK Identity Protection</span>
             </div>
-            <span className="font-mono text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+            <span className="font-mono text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
               k-Anonymity
             </span>
           </div>
@@ -128,12 +151,12 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
               <Radio className="w-4 h-4 text-sky-500" />
               <span className="font-medium text-slate-700">Telemetry Stream</span>
             </div>
-            <span className={`font-mono text-[11px] font-semibold px-2 py-0.5 rounded border ${
+            <span className={`font-mono text-[10px] font-semibold px-2 py-0.5 rounded border ${
               isTelemetryLive 
                 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' 
                 : 'text-slate-500 bg-slate-100 border-slate-200'
             }`}>
-              {isTelemetryLive ? 'LIVE' : 'STANDBY'}
+              {isTelemetryLive ? 'CONNECTED' : 'DISCONNECTED'}
             </span>
           </div>
         </div>

@@ -4,28 +4,47 @@ type TelemetryCallback = (event: IrpTelemetryEvent, endpointEvent?: LiveEndpoint
 
 const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:5174' : '';
 
+export interface DriverStateInfo {
+  installed: boolean;
+  running: boolean;
+  serviceState: 'RUNNING' | 'STOPPED' | 'NOT_INSTALLED';
+  driverName: string;
+  commPort: string;
+  isTestSigned: boolean;
+  raw?: string;
+}
+
 /**
  * RansomWatch Non-Invasive Adapter
  * Interacts with RansomWatch's native operational models, logs (C:\Report*.log),
- * and live bridge transport stream (ws://localhost:5174/ws/telemetry)
- * without modifying any original C++ backend/driver code.
+ * dynamic driver state (sc query FsFilter), and live bridge transport stream (ws://localhost:5174/ws/telemetry)
  */
 class RansomWatchAdapter {
   private isConnected: boolean = false;
-  private commPort: string = '\\RWFilterPort';
+  private lastEventTime: number = 0;
+  private commPort: string = '\\\\RWFilterPort';
   private ws: WebSocket | null = null;
   private telemetryListeners: Set<TelemetryCallback> = new Set();
 
+  private driverState: DriverStateInfo = {
+    installed: false,
+    running: false,
+    serviceState: 'NOT_INSTALLED',
+    driverName: 'FsFilter.sys',
+    commPort: '\\\\RWFilterPort',
+    isTestSigned: true
+  };
+
   private protectedDirectories: string[] = [
     'C:\\BreachGuard-Test',
-    'C:\\Users\\Documents',
-    'C:\\Enterprise\\Databases'
+    'C:\\BreachGuard-Live-Test',
+    'C:\\Users\\Documents'
   ];
 
   private activeTraps: RansomWatchTrap[] = [
-    { id: 'trap-1', path: 'C:\\Users\\Documents\\!00_financial_2026.xlsx', extension: '.xlsx', category: 'DOCUMENT', state: 'ARMED' },
-    { id: 'trap-2', path: 'C:\\BreachGuard-Test\\!00_canary_test.dat', extension: '.dat', category: 'DOCUMENT', state: 'ARMED' },
-    { id: 'trap-3', path: 'C:\\Users\\Documents\\!00_backup_key.zip', extension: '.zip', category: 'ARCHIVE', state: 'ARMED' }
+    { id: 'trap-1', path: 'C:\\Users\\Documents\\!00_financial_2026.xlsx', extension: '.xlsx', category: 'DOCUMENT', state: 'NOT_DEPLOYED' },
+    { id: 'trap-2', path: 'C:\\BreachGuard-Test\\!00_canary_test.dat', extension: '.dat', category: 'DOCUMENT', state: 'NOT_DEPLOYED' },
+    { id: 'trap-3', path: 'C:\\Users\\Documents\\!00_backup_key.zip', extension: '.zip', category: 'ARCHIVE', state: 'NOT_DEPLOYED' }
   ];
 
   private trackedProcesses: RansomWatchProcess[] = [];
@@ -34,6 +53,7 @@ class RansomWatchAdapter {
   constructor() {
     this.initWebSocket();
     this.fetchMetadata();
+    this.checkRealDriverStatus();
   }
 
   private initWebSocket() {
@@ -53,6 +73,7 @@ class RansomWatchAdapter {
           const payload = JSON.parse(event.data);
           if (payload.type === 'IRP_TELEMETRY' && payload.data) {
             const irp: IrpTelemetryEvent = payload.data;
+            this.lastEventTime = Date.now();
             
             // Map IRP to endpoint event
             let eventType: LiveEndpointEvent['eventType'] = 'FILE MODIFIED';
@@ -80,7 +101,7 @@ class RansomWatchAdapter {
               pid: irp.pid,
               entropy: irp.entropy,
               severity,
-              details: `${irp.irpType} operation intercepted on ${irp.filePath} by ${irp.processName} (GID: ${irp.gid})`
+              details: `${irp.irpType} operation intercepted on ${irp.filePath} by ${irp.processName} (${irp.source || 'telemetry'})`
             };
 
             this.telemetryListeners.forEach(listener => listener(irp, epEvent));
@@ -105,6 +126,37 @@ class RansomWatchAdapter {
     }
   }
 
+  public async checkRealDriverStatus(): Promise<DriverStateInfo> {
+    try {
+      // 1. Try native Electron IPC first
+      if (typeof window !== 'undefined' && (window as any).breachGuardDesktop?.checkDriverStatus) {
+        const ipcStatus = await (window as any).breachGuardDesktop.checkDriverStatus();
+        if (ipcStatus) {
+          this.driverState = {
+            installed: !!ipcStatus.installed,
+            running: !!ipcStatus.running,
+            serviceState: ipcStatus.serviceState || (ipcStatus.running ? 'RUNNING' : ipcStatus.installed ? 'STOPPED' : 'NOT_INSTALLED'),
+            driverName: ipcStatus.driverName || 'FsFilter.sys',
+            commPort: ipcStatus.commPort || '\\\\RWFilterPort',
+            isTestSigned: true,
+            raw: ipcStatus.raw
+          };
+          return this.driverState;
+        }
+      }
+
+      // 2. Fallback to bridge API
+      const res = await fetch(`${API_BASE}/api/ransomwatch/metadata`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.driverState) {
+          this.driverState = data.driverState;
+        }
+      }
+    } catch (e) {}
+    return this.driverState;
+  }
+
   public async fetchMetadata() {
     try {
       const res = await fetch(`${API_BASE}/api/ransomwatch/metadata`);
@@ -114,10 +166,46 @@ class RansomWatchAdapter {
         if (data.traps) this.activeTraps = data.traps;
         if (data.trackedProcesses) this.trackedProcesses = data.trackedProcesses;
         if (data.reports) this.incidentReports = data.reports;
+        if (data.driverState) this.driverState = data.driverState;
       }
     } catch (e) {
       // Offline fallback
     }
+  }
+
+  public async deployCanaries(): Promise<{ success: boolean; count?: number; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/api/ransomwatch/deploy-canaries`, { method: 'POST' });
+      if (res.ok) {
+        const result = await res.json();
+        await this.fetchMetadata();
+        return result;
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+    return { success: false, error: 'Bridge unreachable' };
+  }
+
+  public async installDriverElevated(): Promise<{ success: boolean; running?: boolean; error?: string }> {
+    try {
+      if (typeof window !== 'undefined' && (window as any).breachGuardDesktop?.installDriverElevated) {
+        const result = await (window as any).breachGuardDesktop.installDriverElevated();
+        await this.checkRealDriverStatus();
+        return result;
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+    return { success: false, error: 'Desktop elevation IPC unavailable' };
+  }
+
+  public async openDriverInstallerFolder(): Promise<void> {
+    try {
+      if (typeof window !== 'undefined' && (window as any).breachGuardDesktop?.openDriverInstaller) {
+        await (window as any).breachGuardDesktop.openDriverInstaller();
+      }
+    } catch (e) {}
   }
 
   public subscribeTelemetry(callback: TelemetryCallback) {
@@ -125,13 +213,27 @@ class RansomWatchAdapter {
     return () => this.telemetryListeners.delete(callback);
   }
 
+  public getDriverState(): DriverStateInfo {
+    return { ...this.driverState };
+  }
+
+  public getTelemetryStatus(): 'LIVE' | 'CONNECTED_AWAITING_EVENTS' | 'DRIVER_NOT_LOADED' | 'DISCONNECTED' {
+    if (!this.isConnected) return 'DISCONNECTED';
+    if (!this.driverState.running) return 'DRIVER_NOT_LOADED';
+    const isRecentlyActive = Date.now() - this.lastEventTime < 15000;
+    return isRecentlyActive ? 'LIVE' : 'CONNECTED_AWAITING_EVENTS';
+  }
+
   public getCommStatus() {
     return {
-      status: this.isConnected ? ('ONLINE' as const) : ('STANDBY' as const),
-      driverLoaded: true,
+      status: this.driverState.running ? ('ONLINE' as const) : ('STANDBY' as const),
+      driverLoaded: this.driverState.running,
+      driverInstalled: this.driverState.installed,
+      serviceState: this.driverState.serviceState,
       commPort: this.commPort,
       activeGids: this.trackedProcesses.length,
       trapsActive: this.activeTraps.filter(t => t.state === 'ARMED').length,
+      trapsTotal: this.activeTraps.length,
       lastTelemetry: new Date().toISOString()
     };
   }
@@ -152,9 +254,6 @@ class RansomWatchAdapter {
     return [...this.incidentReports];
   }
 
-  /**
-   * Dispatch controlled action through authoritative bridge to driver/process engine
-   */
   public async dispatchControlledAction(action: 'TERMINATE_GID' | 'RESTORE_SNAPSHOT', gid: number): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE}/api/ransomwatch/action`, {
@@ -167,7 +266,6 @@ class RansomWatchAdapter {
         return true;
       }
     } catch (e) {
-      // Local fallback
       if (action === 'TERMINATE_GID') {
         const proc = this.trackedProcesses.find(p => p.gid === gid);
         if (proc) {
@@ -183,50 +281,6 @@ class RansomWatchAdapter {
       return true;
     }
     return false;
-  }
-
-  /**
-   * Parse a raw RansomWatch C:\Report<GID>.log file content string
-   */
-  public parseReportLog(logContent: string, gid: number): RansomWatchReport {
-    const lines = logContent.split(/\r?\n/);
-    let processName = 'Unknown Process';
-    let startTime = new Date().toISOString();
-    let killTime = new Date().toISOString();
-    let isKilled = false;
-    let pids: number[] = [];
-    let changedFiles: string[] = [];
-    let createdFiles: string[] = [];
-    let restoreStatus: 'SUCCESS' | 'PARTIAL' | 'PENDING' | 'FAILED' = 'PENDING';
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line.startsWith('Files report for ransomware running from exe:')) {
-        processName = line.replace('Files report for ransomware running from exe:', '').trim();
-      } else if (line.startsWith('Process started on time:')) {
-        startTime = line.replace('Process started on time:', '').trim();
-      } else if (line.startsWith('Time report:')) {
-        killTime = line.replace('Time report:', '').trim();
-      } else if (line.includes('Process has been killed')) {
-        isKilled = true;
-      } else if (line.startsWith('Pids found:')) {
-        const nextLine = lines[i + 1] || '';
-        pids = nextLine.split(/\s+/).filter(Boolean).map(p => parseInt(p, 10)).filter(n => !isNaN(n));
-      }
-    }
-
-    return {
-      id: `REP-${gid}`,
-      gid,
-      processName,
-      startTime,
-      killTime,
-      isKilled,
-      pids,
-      changedFiles,
-      createdFiles,
-      restoreStatus
-    };
   }
 }
 
