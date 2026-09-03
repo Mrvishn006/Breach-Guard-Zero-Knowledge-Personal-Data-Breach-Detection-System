@@ -27,7 +27,8 @@ ArchitecturesAllowed=x64compatible or x64
 ArchitecturesInstallIn64BitMode=x64compatible or x64
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-UninstallDisplayIcon={app}\{#MyAppExeName}
+SetupIconFile=breachguard.ico
+UninstallDisplayIcon={app}\resources\breachguard.ico
 UninstallDisplayName={#MyAppName} Cyber Defense SOC
 
 [Languages]
@@ -41,10 +42,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\release\BreachGuard-win32-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Bundled RansomWatch Kernel Driver Assets
 Source: "..\driver\*"; DestDir: "{app}\resources\driver"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Application Icon Resource
+Source: "breachguard.ico"; DestDir: "{app}\resources"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\resources\breachguard.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\resources\breachguard.ico"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

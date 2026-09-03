@@ -39,83 +39,155 @@ export const BreachGuardLogo: React.FC<BreachGuardLogoProps> = ({
 
   return (
     <div className={`inline-flex items-center gap-3 select-none ${className}`}>
-      {/* Shield + Stylized 'B' Security Emblem */}
+      {/* 3D Shield + Stylized 'B' + Green Protection Badge Emblem */}
       <div className={`relative shrink-0 ${emblemSizes[size]}`}>
         <svg 
-          viewBox="0 0 48 48" 
+          viewBox="0 0 512 512" 
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full drop-shadow-sm transition-transform duration-300 hover:scale-105"
+          className="w-full h-full drop-shadow-md transition-transform duration-300 hover:scale-105"
         >
           <defs>
-            <linearGradient id="bgGradMain" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#FB923C" />
-              <stop offset="50%" stopColor="#F97316" />
+            {/* Metallic Outer Rim */}
+            <linearGradient id="shieldRimGrad" x1="64" y1="40" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#FFFFFF" />
+              <stop offset="25%" stopColor="#CBD5E1" />
+              <stop offset="50%" stopColor="#64748B" />
+              <stop offset="75%" stopColor="#E2E8F0" />
+              <stop offset="100%" stopColor="#475569" />
+            </linearGradient>
+
+            {/* Dark Obsidian / Navy Plate */}
+            <linearGradient id="shieldInnerGrad" x1="256" y1="56" x2="256" y2="464" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#1E293B" />
+              <stop offset="35%" stopColor="#0F172A" />
+              <stop offset="100%" stopColor="#050811" />
+            </linearGradient>
+
+            {/* Orange Energy Accent */}
+            <linearGradient id="orangeAccentGrad" x1="120" y1="80" x2="392" y2="440" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#FDE68A" />
+              <stop offset="30%" stopColor="#F59E0B" />
+              <stop offset="70%" stopColor="#F97316" />
               <stop offset="100%" stopColor="#EA580C" />
             </linearGradient>
 
-            <linearGradient id="bgGradInner" x1="12" y1="8" x2="36" y2="40" gradientUnits="userSpaceOnUse">
+            {/* Metallic 'B' Gradient */}
+            <linearGradient id="bMetalGrad" x1="160" y1="130" x2="360" y2="380" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stopColor="#FFFFFF" />
-              <stop offset="100%" stopColor="#FFF7ED" />
+              <stop offset="35%" stopColor="#F1F5F9" />
+              <stop offset="70%" stopColor="#CBD5E1" />
+              <stop offset="100%" stopColor="#94A3B8" />
             </linearGradient>
 
-            <filter id="bgShadowSm" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#EA580C" floodOpacity="0.25" />
-            </filter>
+            {/* Green Protection Mini Shield Gradient */}
+            <linearGradient id="greenBadgeGrad" x1="330" y1="330" x2="450" y2="460" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#34D399" />
+              <stop offset="50%" stopColor="#10B981" />
+              <stop offset="100%" stopColor="#047857" />
+            </linearGradient>
+
+            {/* Specular Highlight */}
+            <linearGradient id="glossGrad" x1="256" y1="56" x2="256" y2="280" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.4" />
+              <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+            </linearGradient>
           </defs>
 
-          {/* Concentric Guard / Protection Ring */}
-          <circle cx="24" cy="24" r="22" stroke="#FDBA74" strokeWidth="1.2" strokeDasharray="3 2" opacity="0.65" />
-          <circle cx="24" cy="24" r="23.5" stroke="#FB923C" strokeWidth="0.75" opacity="0.3" />
+          {/* Concentric Glowing Orbital Ring */}
+          <circle cx="256" cy="256" r="236" stroke="#FDBA74" strokeWidth="8" strokeDasharray="20 16" opacity="0.65" />
+          <circle cx="256" cy="256" r="248" stroke="#F97316" strokeWidth="4" opacity="0.35" />
 
-          {/* Shield Base */}
+          {/* Main Beveled 3D Shield Body */}
           <path 
-            d="M24 4.5L38 10.5C38 23.5 31.5 35 24 43.5C16.5 35 10 23.5 10 10.5L24 4.5Z" 
-            fill="url(#bgGradMain)" 
-            filter="url(#bgShadowSm)"
+            d="M256 46 L432 108 C432 278 350 398 256 468 C162 398 80 278 80 108 L256 46 Z" 
+            fill="url(#shieldRimGrad)" 
+          />
+          <path 
+            d="M256 58 L420 116 C420 270 342 384 256 450 C170 384 92 270 92 116 L256 58 Z" 
+            fill="#475569" 
+          />
+          <path 
+            d="M256 68 L408 124 C408 262 334 370 256 434 C178 370 104 262 104 124 L256 68 Z" 
+            fill="url(#shieldInnerGrad)" 
           />
 
-          {/* Rim Highlight */}
+          {/* Internal Orange Energy Halo */}
           <path 
-            d="M24 6.2L36.2 11.5C36.2 22.8 30.5 33.2 24 41C17.5 33.2 11.8 22.8 11.8 11.5L24 6.2Z" 
-            stroke="#FFEDD5" 
-            strokeWidth="0.8" 
+            d="M256 82 L394 132 C394 254 326 352 256 414 C186 352 118 254 118 132 L256 82 Z" 
+            stroke="url(#orangeAccentGrad)" 
+            strokeWidth="5" 
+            fill="none" 
+            opacity="0.85"
+          />
+
+          {/* Stylized Metallic 'B' Emblem */}
+          {/* Orange Backlight */}
+          <path 
+            d="M174 136 H296 C344 136 376 164 376 206 C376 236 356 256 326 264 C364 274 388 300 388 340 C388 388 350 418 298 418 H174 V136 Z" 
+            fill="url(#orangeAccentGrad)" 
             opacity="0.45"
-            fill="none"
           />
 
-          {/* Stylized 'B' Structure */}
-          {/* Vertical Spine */}
-          <rect x="17" y="14" width="3.5" height="20" rx="1.75" fill="url(#bgGradInner)" />
-          
-          {/* Upper Bow */}
+          {/* Spine */}
+          <rect x="180" y="142" width="46" height="268" rx="23" fill="url(#bMetalGrad)" stroke="#FFFFFF" strokeWidth="2" />
+
+          {/* Top Loop */}
           <path 
-            d="M19 14H26.5C29.5 14 31.5 15.8 31.5 18.5C31.5 21.2 29.5 23 26.5 23H19V14Z" 
-            fill="url(#bgGradInner)"
+            d="M206 142 H296 C336 142 364 166 364 204 C364 240 336 262 296 262 H206 V142 Z" 
+            fill="url(#bMetalGrad)" 
+            stroke="#FFFFFF" 
+            strokeWidth="2"
           />
           <path 
-            d="M20.5 16.5H26C27.8 16.5 29 17.3 29 18.5C29 19.7 27.8 20.5 26 20.5H20.5V16.5Z" 
-            fill="#EA580C"
+            d="M226 174 H290 C312 174 328 186 328 204 C328 222 312 232 290 232 H226 V174 Z" 
+            fill="#0F172A" 
+            stroke="url(#orangeAccentGrad)" 
+            strokeWidth="3"
           />
 
-          {/* Lower Bow */}
+          {/* Bottom Loop */}
           <path 
-            d="M19 22H27.5C30.8 22 33 24 33 27C33 30 30.8 32 27.5 32H19V22Z" 
-            fill="url(#bgGradInner)"
+            d="M206 252 H306 C348 252 376 278 376 322 C376 368 348 398 306 398 H206 V252 Z" 
+            fill="url(#bMetalGrad)" 
+            stroke="#FFFFFF" 
+            strokeWidth="2"
           />
           <path 
-            d="M20.5 24.5H26.8C28.8 24.5 30.2 25.5 30.2 27C30.2 28.5 28.8 29.5 26.8 29.5H20.5V24.5Z" 
-            fill="#EA580C"
+            d="M226 284 H300 C324 284 340 298 340 322 C340 346 324 364 300 364 H226 V284 Z" 
+            fill="#0F172A" 
+            stroke="url(#orangeAccentGrad)" 
+            strokeWidth="3"
           />
 
-          {/* Micro Lock / Guard Core */}
-          <circle cx="24" cy="23.5" r="1.2" fill="#FFFFFF" />
+          {/* Security Core Node */}
+          <circle cx="266" cy="257" r="10" fill="#FFFFFF" />
+          <circle cx="266" cy="257" r="6" fill="#F97316" />
+
+          {/* Top Specular Gloss Highlight */}
+          <path 
+            d="M256 70 L400 122 C370 220 310 260 256 270 C202 260 142 220 112 122 L256 70 Z" 
+            fill="url(#glossGrad)" 
+            opacity="0.85"
+          />
+
+          {/* Green Protection Shield Badge (Bottom-Right) */}
+          <path 
+            d="M392 342 L460 366 C460 426 430 464 392 488 C354 464 324 426 324 366 L392 342 Z" 
+            fill="url(#greenBadgeGrad)" 
+            stroke="#A7F3D0" 
+            strokeWidth="4"
+          />
+          {/* Verified Checkmark in Green Badge */}
+          <path 
+            d="M366 414 L384 432 L422 390" 
+            stroke="#FFFFFF" 
+            strokeWidth="8" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+          />
         </svg>
-
-        {/* Live Protection Status Indicator */}
-        {isOnline && (
-          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-soft" />
-        )}
       </div>
 
       {/* Wordmark & Product Label */}

@@ -63,6 +63,7 @@
       }
     ],
     "win": {
+      "icon": "build/icons/breachguard.ico",
       "target": [
         {
           "target": "nsis",

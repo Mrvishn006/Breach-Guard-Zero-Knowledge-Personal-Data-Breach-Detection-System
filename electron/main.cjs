@@ -68,6 +68,9 @@ function createWindow() {
     minHeight: 700,
     title: 'BreachGuard SOC — Zero-Knowledge Credential Defense & Ransomware Mitigation',
     backgroundColor: '#F7F8FA',
+    icon: fs.existsSync(path.join(__dirname, '../src/assets/branding/breachguard-icon.png'))
+      ? path.join(__dirname, '../src/assets/branding/breachguard-icon.png')
+      : path.join(__dirname, '../build/icons/breachguard.ico'),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

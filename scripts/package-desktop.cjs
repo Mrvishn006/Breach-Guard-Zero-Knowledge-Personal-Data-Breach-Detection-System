@@ -40,11 +40,12 @@ console.log('\n[3/5] Bundling Application Files & Driver Assets...');
 const appResourcesDir = path.join(unpackedDir, 'resources', 'app');
 fs.mkdirSync(appResourcesDir, { recursive: true });
 
-// Copy dist/, electron/, server/, driver/, package.json
+// Copy dist/, electron/, server/, driver/, src/assets, package.json
 fs.cpSync(path.join(rootDir, 'dist'), path.join(appResourcesDir, 'dist'), { recursive: true });
 fs.cpSync(path.join(rootDir, 'electron'), path.join(appResourcesDir, 'electron'), { recursive: true });
 fs.cpSync(path.join(rootDir, 'server'), path.join(appResourcesDir, 'server'), { recursive: true });
 fs.cpSync(path.join(rootDir, 'driver'), path.join(appResourcesDir, 'driver'), { recursive: true });
+fs.cpSync(path.join(rootDir, 'src', 'assets'), path.join(appResourcesDir, 'src', 'assets'), { recursive: true });
 fs.copyFileSync(path.join(rootDir, 'package.json'), path.join(appResourcesDir, 'package.json'));
 
 // Copy node_modules needed by server (ws)
@@ -55,10 +56,18 @@ if (fs.existsSync(wsModule)) {
   fs.cpSync(wsModule, path.join(appNodeModules, 'ws'), { recursive: true });
 }
 
-// Also copy driver to top-level resources/driver for easy accessibility
-const topDriverDir = path.join(unpackedDir, 'resources', 'driver');
+// Copy icon and driver to top-level resources for easy accessibility
+const topResourcesDir = path.join(unpackedDir, 'resources');
+fs.mkdirSync(topResourcesDir, { recursive: true });
+const topDriverDir = path.join(topResourcesDir, 'driver');
 fs.mkdirSync(topDriverDir, { recursive: true });
 fs.cpSync(path.join(rootDir, 'driver'), topDriverDir, { recursive: true });
+
+// Copy breachguard.ico to resources
+const buildIco = path.join(rootDir, 'build', 'icons', 'breachguard.ico');
+if (fs.existsSync(buildIco)) {
+  fs.copyFileSync(buildIco, path.join(topResourcesDir, 'breachguard.ico'));
+}
 
 // 4. Create Windows Desktop Installer Package (BreachGuard-Setup.exe via Inno Setup)
 console.log('\n[4/5] Compiling Standalone Inno Setup Installer (BreachGuard-Setup.exe)...');
