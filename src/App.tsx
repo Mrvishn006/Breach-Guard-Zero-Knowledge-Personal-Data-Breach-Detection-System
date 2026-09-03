@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
+import { SidebarLeft } from './components/SidebarLeft';
+import { NavRailRight, NavRailDestination } from './components/NavRailRight';
+import { StatusBarBottom } from './components/StatusBarBottom';
 import { UnifiedOverview } from './components/UnifiedOverview';
 import { RansomWatchMonitor } from './components/RansomWatchMonitor';
 import { BreachGuardConsole } from './components/BreachGuardConsole';
@@ -13,6 +16,8 @@ import { aiAgentOrchestrator } from './services/ai-agent-orchestrator';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'ransomwatch' | 'breachguard' | 'copilot'>('overview');
+  const [activeRailDest, setActiveRailDest] = useState<NavRailDestination>('dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // State from Orchestrator & Adapters
   const [metrics, setMetrics] = useState<SecurityMetrics>(aiAgentOrchestrator.calculateCompositeMetrics());
@@ -22,6 +27,7 @@ export function App() {
   const [selectedIncident, setSelectedIncident] = useState<CorrelatedIncident | null>(null);
   const [chatMessages, setChatMessages] = useState<AIChatMessage[]>(aiAgentOrchestrator.getChatHistory());
   const [breachHistory, setBreachHistory] = useState<EmailBreachResult[]>(breachGuardAdapter.getHistory());
+  const [isTelemetryLive, setIsTelemetryLive] = useState(false);
 
   // RansomWatch data
   const [processes, setProcesses] = useState(ransomWatchAdapter.getTrackedProcesses());
@@ -29,10 +35,11 @@ export function App() {
   const [reports, setReports] = useState(ransomWatchAdapter.getReports());
   const [directories, setDirectories] = useState(ransomWatchAdapter.getProtectedDirectories());
 
-  // Subscribe to genuine real-time WebSocket telemetry from RansomWatch Bridge
+  // Subscribe to real-time WebSocket telemetry from RansomWatch Bridge
   useEffect(() => {
     const unsubscribe = ransomWatchAdapter.subscribeTelemetry((irp, epEvent) => {
-      setRecentIrps(prev => [irp, ...prev.slice(0, 24)]);
+      setIsTelemetryLive(true);
+      setRecentIrps(prev => [irp, ...prev.slice(0, 29)]);
       if (epEvent) {
         setEndpointEvents(prev => [epEvent, ...prev.slice(0, 49)]);
       }
@@ -73,71 +80,157 @@ export function App() {
     }));
   };
 
-  const handleActionExecute = async (actionKey: string, params?: any) => {
-    const resText = await aiAgentOrchestrator.executeSuggestedAction(actionKey, params);
-    setChatMessages(aiAgentOrchestrator.getChatHistory());
-    refreshOrchestrator();
-    return resText;
+  // Sync Nav Rail destination with tabs
+  const handleSelectRailDestination = (dest: NavRailDestination) => {
+    setActiveRailDest(dest);
+    switch (dest) {
+      case 'dashboard':
+        setActiveTab('overview');
+        break;
+      case 'threats':
+        if (incidents.length > 0) {
+          setSelectedIncident(incidents[0]);
+        } else {
+          setActiveTab('overview');
+        }
+        break;
+      case 'telemetry':
+      case 'file_activity':
+        setActiveTab('overview');
+        break;
+      case 'identities':
+      case 'network':
+        setActiveTab('breachguard');
+        break;
+      case 'processes':
+      case 'reports':
+      case 'recovery':
+        setActiveTab('ransomwatch');
+        break;
+      case 'ai_analysis':
+        setActiveTab('copilot');
+        break;
+      case 'settings':
+        setActiveTab('ransomwatch');
+        break;
+    }
+  };
+
+  const handleTabChange = (tab: 'overview' | 'ransomwatch' | 'breachguard' | 'copilot') => {
+    setActiveTab(tab);
+    if (tab === 'overview') setActiveRailDest('dashboard');
+    else if (tab === 'ransomwatch') setActiveRailDest('processes');
+    else if (tab === 'breachguard') setActiveRailDest('identities');
+    else if (tab === 'copilot') setActiveRailDest('ai_analysis');
+  };
+
+  const handleDomainShortcut = (domainKey: string) => {
+    switch (domainKey) {
+      case 'ransomware':
+      case 'processes':
+      case 'recovery':
+        handleTabChange('ransomwatch');
+        break;
+      case 'breachguard':
+      case 'identities':
+      case 'network':
+        handleTabChange('breachguard');
+        break;
+      case 'ai_soc':
+        handleTabChange('copilot');
+        break;
+      case 'telemetry':
+      case 'file_activity':
+      default:
+        handleTabChange('overview');
+        break;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="min-h-screen bg-[#F7F8FA] text-slate-800 flex flex-col font-sans selection:bg-brand-500/20 selection:text-brand-900">
       
-      {/* Top Main Navigation */}
+      {/* Top Main Application Header */}
       <Navbar 
         activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+        setActiveTab={handleTabChange} 
         metrics={metrics}
         onSimulateAttack={() => {}}
+        isTelemetryLive={isTelemetryLive}
       />
 
-      {/* Main Content View Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        
-        {/* Tab 1: Unified Security Operations Overview */}
-        {activeTab === 'overview' && (
-          <UnifiedOverview 
+      {/* Main 3-Column Desktop Application Shell */}
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col lg:flex-row items-start gap-6">
+          
+          {/* Left Information Panel */}
+          <SidebarLeft 
             metrics={metrics}
-            incidents={incidents}
-            recentIrps={recentIrps}
-            endpointEvents={endpointEvents}
-            onSelectIncident={setSelectedIncident}
-            onNavigateTab={setActiveTab}
-            onSimulateAttack={() => {}}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            trackedProcessesCount={processes.length}
+            uptimeText="Active"
+            lastUpdateText={new Date().toLocaleTimeString()}
+            isTelemetryLive={isTelemetryLive}
           />
-        )}
 
-        {/* Tab 2: RansomWatch Kernel Defense */}
-        {activeTab === 'ransomwatch' && (
-          <RansomWatchMonitor 
-            processes={processes}
-            traps={traps}
-            reports={reports}
-            directories={directories}
-            recentIrps={recentIrps}
-            onTriggerTestAttack={() => {}}
+          {/* Central Main Content View Container */}
+          <main className="flex-1 min-w-0 w-full space-y-6">
+            
+            {/* Tab 1: Unified Security Operations Overview */}
+            {activeTab === 'overview' && (
+              <UnifiedOverview 
+                metrics={metrics}
+                incidents={incidents}
+                recentIrps={recentIrps}
+                endpointEvents={endpointEvents}
+                onSelectIncident={setSelectedIncident}
+                onNavigateTab={handleTabChange}
+                onSimulateAttack={() => {}}
+                onSelectDomain={handleDomainShortcut}
+              />
+            )}
+
+            {/* Tab 2: RansomWatch Kernel Defense */}
+            {activeTab === 'ransomwatch' && (
+              <RansomWatchMonitor 
+                processes={processes}
+                traps={traps}
+                reports={reports}
+                directories={directories}
+                recentIrps={recentIrps}
+                onTriggerTestAttack={() => {}}
+              />
+            )}
+
+            {/* Tab 3: Breach Guard Intelligence & Privacy */}
+            {activeTab === 'breachguard' && (
+              <BreachGuardConsole 
+                history={breachHistory}
+                onEmailChecked={handleEmailChecked}
+              />
+            )}
+
+            {/* Tab 4: AI SOC Copilot & Autonomous Triage */}
+            {activeTab === 'copilot' && (
+              <AICopilot 
+                messages={chatMessages}
+                onSendMessage={handleSendMessage}
+                onSelectIncident={setSelectedIncident}
+                onSimulateAttack={() => {}}
+              />
+            )}
+
+          </main>
+
+          {/* Right Navigation Rail */}
+          <NavRailRight 
+            activeDestination={activeRailDest}
+            onSelectDestination={handleSelectRailDestination}
           />
-        )}
 
-        {/* Tab 3: Breach Guard Intelligence & Privacy */}
-        {activeTab === 'breachguard' && (
-          <BreachGuardConsole 
-            history={breachHistory}
-            onEmailChecked={handleEmailChecked}
-          />
-        )}
-
-        {/* Tab 4: AI SOC Copilot & Autonomous Triage */}
-        {activeTab === 'copilot' && (
-          <AICopilot 
-            messages={chatMessages}
-            onSendMessage={handleSendMessage}
-            onSelectIncident={setSelectedIncident}
-            onSimulateAttack={() => {}}
-          />
-        )}
-
-      </main>
+        </div>
+      </div>
 
       {/* Root Cause Analysis & Forensic Incident Modal */}
       <CorrelatedIncidentModal 
@@ -146,18 +239,12 @@ export function App() {
         onMitigate={handleMitigateIncident}
       />
 
-      {/* Footer Status Line */}
-      <footer className="border-t border-slate-800/80 py-4 px-6 bg-slate-950/40 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>BreachGuard Unified Endpoint Defense &bull; Zero-Knowledge Security Platform</span>
-        </div>
-        <div className="flex items-center gap-4 font-mono text-[11px]">
-          <span>Shannon Entropy Engine: <strong className="text-slate-400">Armed</strong></span>
-          <span>k-Anonymity Cache: <strong className="text-slate-400">Active</strong></span>
-          <span>FsFilter: <strong className="text-emerald-400">\\RWFilterPort</strong></span>
-        </div>
-      </footer>
+      {/* Bottom System Status Bar */}
+      <StatusBarBottom 
+        isDriverActive={true}
+        isRansomWatchActive={true}
+        isTelemetryLive={isTelemetryLive}
+      />
 
     </div>
   );

@@ -67,7 +67,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'BreachGuard SOC — Zero-Knowledge Credential Defense & Ransomware Mitigation',
-    backgroundColor: '#07090e',
+    backgroundColor: '#F7F8FA',
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
