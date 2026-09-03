@@ -44,8 +44,8 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
   return (
     <div className="space-y-6">
 
-      {/* Top Banner: AI Threat Correlator Highlight */}
-      {primaryIncident && (
+      {/* Top Banner: AI Threat Correlator Highlight (Only when real incident exists) */}
+      {primaryIncident ? (
         <div className="relative overflow-hidden rounded-2xl glass-panel-red p-5 border border-rose-500/40 shadow-glow-red transition-all">
           <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
           
@@ -62,9 +62,11 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
                   <span className="text-xs text-rose-300 font-mono">
                     {new Date(primaryIncident.timestamp).toLocaleTimeString()}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-rose-950/60 border border-rose-800/80 text-rose-300 font-mono">
-                    GID: {primaryIncident.linkedGid}
-                  </span>
+                  {primaryIncident.linkedGid ? (
+                    <span className="text-xs px-2 py-0.5 rounded bg-rose-950/60 border border-rose-800/80 text-rose-300 font-mono">
+                      GID: {primaryIncident.linkedGid}
+                    </span>
+                  ) : null}
                 </div>
                 <h3 className="text-lg font-bold text-white tracking-tight">
                   {primaryIncident.title}
@@ -85,6 +87,21 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      ) : (
+        <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border border-emerald-500/20 bg-emerald-950/10">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">System Monitoring Active — No Active Threats Detected</h4>
+              <p className="text-[11px] text-slate-400">RansomWatch kernel driver and zero-knowledge identity safeguards are continuously armed.</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono uppercase px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            Posture: Clean
+          </span>
         </div>
       )}
 
@@ -117,13 +134,13 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
                   metrics.compositeRiskScore > 35 ? 'bg-gradient-to-r from-cyan-500 to-amber-500' :
                   'bg-gradient-to-r from-emerald-500 to-cyan-500'
                 }`}
-                style={{ width: `${metrics.compositeRiskScore}%` }}
+                style={{ width: `${Math.max(5, metrics.compositeRiskScore)}%` }}
               />
             </div>
           </div>
           <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
             <span>Threat Level: <strong className="text-slate-200">{metrics.threatLevel}</strong></span>
-            <span className="text-slate-500">Deterministic Model</span>
+            <span className="text-slate-500">Evidence-Gated</span>
           </div>
         </div>
 
@@ -170,7 +187,7 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
               <span className="text-3xl font-extrabold text-white font-mono">
                 {metrics.activeBreachedAccounts}
               </span>
-              <span className="text-xs text-slate-500">Accounts Flagged</span>
+              <span className="text-xs text-slate-500">Verified Exposed</span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
               Zero-Knowledge k-Anonymity & Exposure Maps
@@ -198,11 +215,11 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
               <span className="text-xs text-slate-500">Files Recovered</span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Azure Snapshot Rollback: <strong className="text-emerald-400">Armed & Syncing</strong>
+              Snapshot Rollback: <strong className="text-emerald-400">Armed & Syncing</strong>
             </p>
           </div>
           <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>{metrics.protectedDirectories} Protected Paths</span>
+            <span>{metrics.protectedDirectories} Monitored Paths</span>
             <span className="text-emerald-400 font-mono">100% Intact</span>
           </div>
         </div>
@@ -228,63 +245,71 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
           </div>
 
           <p className="text-xs text-slate-400">
-            Real-time I/O request packet telemetry intercepted by <span className="text-cyan-300 font-mono">FsFilter.sys</span> across system shares.
+            Real-time I/O request packet telemetry intercepted by <span className="text-cyan-300 font-mono">FsFilter.sys</span> across protected shares.
           </p>
 
           <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
-            {recentIrps.map((irp) => {
-              let tag = 'FILE MODIFIED';
-              let badgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
+            {recentIrps.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 font-sans space-y-2 border border-dashed border-slate-800 rounded-xl">
+                <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto opacity-75" />
+                <p className="text-xs text-slate-300 font-medium">System monitoring active — awaiting endpoint telemetry</p>
+                <p className="text-[11px] text-slate-500">Perform file operations or run tests in C:\BreachGuard-Test\ to stream real IRP events.</p>
+              </div>
+            ) : (
+              recentIrps.map((irp) => {
+                let tag = 'FILE MODIFIED';
+                let badgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
 
-              if (irp.isTrap) {
-                tag = 'CANARY TRIGGERED';
-                badgeColor = 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse';
-              } else if (irp.entropy > 7.5) {
-                tag = 'ENTROPY ANOMALY';
-                badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/50';
-              } else if (irp.irpType === 'IRP_MJ_CREATE') {
-                tag = 'FILE CREATED';
-                badgeColor = 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30';
-              } else if (irp.irpType === 'IRP_MJ_SET_INFORMATION') {
-                tag = 'FILE RENAMED';
-                badgeColor = 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30';
-              }
+                if (irp.isTrap) {
+                  tag = 'CANARY TRIGGERED';
+                  badgeColor = 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse';
+                } else if (irp.entropy > 7.5) {
+                  tag = 'ENTROPY ANOMALY';
+                  badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+                } else if (irp.irpType === 'IRP_MJ_CREATE') {
+                  tag = 'FILE CREATED';
+                  badgeColor = 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30';
+                } else if (irp.irpType === 'IRP_MJ_SET_INFORMATION') {
+                  tag = 'FILE RENAMED';
+                  badgeColor = 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30';
+                }
 
-              return (
-                <div 
-                  key={irp.id}
-                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono transition-all ${
-                    irp.isTrap ? 'bg-rose-950/20 border-rose-500/40' : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-900/90'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase shrink-0 ${badgeColor}`}>
-                      {tag}
-                    </span>
-                    <span className="text-slate-200 truncate font-sans text-xs">
-                      {irp.filePath}
-                    </span>
+                return (
+                  <div 
+                    key={irp.id}
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono transition-all ${
+                      irp.isTrap ? 'bg-rose-950/20 border-rose-500/40' : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-900/90'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase shrink-0 ${badgeColor}`}>
+                        {tag}
+                      </span>
+                      <span className="text-slate-200 truncate font-sans text-xs">
+                        {irp.filePath}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-slate-400">
+                      <span className="hidden sm:inline text-slate-500">
+                        GID: <strong className="text-slate-300">{irp.gid || 'Unavailable'}</strong>
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded ${
+                        irp.entropy > 7.5 ? 'bg-rose-500/20 text-rose-300 font-bold' : 'bg-slate-800 text-slate-400'
+                      }`}>
+                        H: {irp.entropy.toFixed(2)}
+                      </span>
+                      <span className="text-slate-500">{irp.timestamp}</span>
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-3 shrink-0 text-[11px] text-slate-400">
-                    <span className="hidden sm:inline text-slate-500">
-                      GID: <strong className="text-slate-300">{irp.gid}</strong>
-                    </span>
-                    <span className={`px-1.5 py-0.5 rounded ${
-                      irp.entropy > 7.5 ? 'bg-rose-500/20 text-rose-300 font-bold' : 'bg-slate-800 text-slate-400'
-                    }`}>
-                      H: {irp.entropy.toFixed(2)}
-                    </span>
-                    <span className="text-slate-500">{irp.timestamp}</span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-2 border-t border-slate-800/60">
             <span>Shannon Entropy Window: 0.0 - 8.0</span>
-            <span>Driver Intercept Rate: ~450 IRPs/sec</span>
+            <span>Real-Time Driver Filter Channel Active</span>
           </div>
         </div>
 
@@ -307,10 +332,14 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
 
             <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs">
               <div className="text-indigo-300 font-semibold text-[11px] uppercase tracking-wider">
-                Active Attack Chain Analysis
+                Attack Chain Attribution
               </div>
               <p className="text-slate-300 text-xs">
-                Credential leak (<code className="text-indigo-400">admin@corp</code>) &rarr; Lateral RDP &rarr; GID 1042 execution &rarr; Driver killswitch triggered.
+                {primaryIncident ? (
+                  <span>{primaryIncident.correlationSummary}</span>
+                ) : (
+                  <span className="text-slate-400 italic">Insufficient telemetry for attack-chain attribution — endpoint is clean.</span>
+                )}
               </p>
             </div>
           </div>

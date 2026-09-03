@@ -17,87 +17,19 @@ class RansomWatchAdapter {
   private telemetryListeners: Set<TelemetryCallback> = new Set();
 
   private protectedDirectories: string[] = [
-    'C:\\Users\\Finance\\Documents',
-    'C:\\Enterprise\\Databases',
-    'C:\\Shared\\Accounting',
-    'C:\\Users\\Executive\\Vault'
+    'C:\\BreachGuard-Test',
+    'C:\\Users\\Documents',
+    'C:\\Enterprise\\Databases'
   ];
 
   private activeTraps: RansomWatchTrap[] = [
-    { id: 'trap-1', path: 'C:\\Users\\Finance\\Documents\\!00_financial_2026.xlsx', extension: '.xlsx', category: 'DOCUMENT', state: 'ARMED' },
-    { id: 'trap-2', path: 'C:\\Enterprise\\Databases\\!00_users_prod.mdf', extension: '.mdf', category: 'DATABASE', state: 'ARMED' },
-    { id: 'trap-3', path: 'C:\\Shared\\Accounting\\!00_tax_records.pdf', extension: '.pdf', category: 'DOCUMENT', state: 'ARMED' },
-    { id: 'trap-4', path: 'C:\\Users\\Executive\\Vault\\!00_backup_key.zip', extension: '.zip', category: 'ARCHIVE', state: 'ARMED' },
-    { id: 'trap-5', path: 'C:\\Users\\Finance\\Documents\\!00_summary.docx', extension: '.docx', category: 'DOCUMENT', state: 'ARMED' },
+    { id: 'trap-1', path: 'C:\\Users\\Documents\\!00_financial_2026.xlsx', extension: '.xlsx', category: 'DOCUMENT', state: 'ARMED' },
+    { id: 'trap-2', path: 'C:\\BreachGuard-Test\\!00_canary_test.dat', extension: '.dat', category: 'DOCUMENT', state: 'ARMED' },
+    { id: 'trap-3', path: 'C:\\Users\\Documents\\!00_backup_key.zip', extension: '.zip', category: 'ARCHIVE', state: 'ARMED' }
   ];
 
-  private trackedProcesses: RansomWatchProcess[] = [
-    {
-      gid: 1042,
-      mainPid: 8492,
-      name: 'svchost_updater.exe (CryptLock Variant)',
-      pids: [8492, 9120, 9344],
-      status: 'TERMINATED',
-      entropy: 7.94,
-      irpCount: 2450,
-      changedFilesCount: 18,
-      createdFilesCount: 22,
-      detectedTriggers: ['Shannon Entropy > 7.8', 'Trap File Touched (!00_financial_2026.xlsx)', 'Mass .locked Extension Renames'],
-      startTime: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-      killTime: new Date(Date.now() - 1000 * 60 * 17).toISOString(),
-      reportPath: 'C:\\Report1042.log'
-    },
-    {
-      gid: 1088,
-      mainPid: 14208,
-      name: 'chrome_helper_proc.exe',
-      pids: [14208, 14220],
-      status: 'MONITORED',
-      entropy: 4.12,
-      irpCount: 382,
-      changedFilesCount: 2,
-      createdFilesCount: 1,
-      detectedTriggers: [],
-      startTime: new Date(Date.now() - 1000 * 60 * 45).toISOString()
-    },
-    {
-      gid: 1104,
-      mainPid: 17892,
-      name: 'excel.exe',
-      pids: [17892],
-      status: 'MONITORED',
-      entropy: 5.21,
-      irpCount: 512,
-      changedFilesCount: 4,
-      createdFilesCount: 0,
-      detectedTriggers: [],
-      startTime: new Date(Date.now() - 1000 * 60 * 120).toISOString()
-    }
-  ];
-
-  private incidentReports: RansomWatchReport[] = [
-    {
-      id: 'REP-1042',
-      gid: 1042,
-      processName: 'svchost_updater.exe',
-      startTime: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-      killTime: new Date(Date.now() - 1000 * 60 * 17).toISOString(),
-      isKilled: true,
-      pids: [8492, 9120, 9344],
-      changedFiles: [
-        'C:\\Users\\Finance\\Documents\\Q1_2026_Ledger.xlsx.locked',
-        'C:\\Users\\Finance\\Documents\\Payroll_Summary.pdf.locked',
-        'C:\\Enterprise\\Databases\\Customers_Q4.csv.locked',
-        'C:\\Users\\Finance\\Documents\\!00_financial_2026.xlsx.locked'
-      ],
-      createdFiles: [
-        'C:\\Users\\Finance\\Documents\\HOW_TO_DECRYPT_FILES.txt',
-        'C:\\Enterprise\\Databases\\README_RESTORE.txt'
-      ],
-      restoreStatus: 'SUCCESS',
-      azureSnapshotTimestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString()
-    }
-  ];
+  private trackedProcesses: RansomWatchProcess[] = [];
+  private incidentReports: RansomWatchReport[] = [];
 
   constructor() {
     this.initWebSocket();
@@ -295,87 +227,6 @@ class RansomWatchAdapter {
       createdFiles,
       restoreStatus
     };
-  }
-
-  /**
-   * Generates a live simulated IRP event stream item (when offline or for test triggers)
-   */
-  public generateNextIrpTelemetry(): IrpTelemetryEvent {
-    const randomProcess = this.trackedProcesses[Math.floor(Math.random() * this.trackedProcesses.length)];
-    const types: ('IRP_MJ_CREATE' | 'IRP_MJ_READ' | 'IRP_MJ_WRITE' | 'IRP_MJ_SET_INFORMATION')[] = [
-      'IRP_MJ_READ', 'IRP_MJ_WRITE', 'IRP_MJ_CREATE', 'IRP_MJ_SET_INFORMATION'
-    ];
-    const chosenType = types[Math.floor(Math.random() * types.length)];
-    const isTrap = Math.random() < 0.12;
-    const filePath = isTrap
-      ? this.activeTraps[Math.floor(Math.random() * this.activeTraps.length)].path
-      : `C:\\Users\\Finance\\Documents\\file_${Math.floor(Math.random() * 80) + 1}.dat`;
-
-    const entropy = randomProcess.status === 'MALICIOUS'
-      ? +(7.4 + Math.random() * 0.55).toFixed(2)
-      : +(3.2 + Math.random() * 2.1).toFixed(2);
-
-    return {
-      id: 'irp-' + Math.random().toString(36).substring(2, 9),
-      timestamp: new Date().toLocaleTimeString(),
-      gid: randomProcess.gid,
-      pid: randomProcess.pids[0] || randomProcess.mainPid,
-      processName: randomProcess.name,
-      irpType: chosenType,
-      filePath,
-      entropy,
-      isTrap
-    };
-  }
-
-  /**
-   * Controlled Attack Scenario Trigger (For verification & testing)
-   */
-  public triggerTestAttack(targetFolder: string = 'C:\\Enterprise\\Databases') {
-    const newGid = 1000 + Math.floor(Math.random() * 9000);
-    const newPid = 20000 + Math.floor(Math.random() * 10000);
-    const processName = 'win_svchost_payload.exe';
-
-    const newProc: RansomWatchProcess = {
-      gid: newGid,
-      mainPid: newPid,
-      name: processName,
-      pids: [newPid, newPid + 4],
-      status: 'MALICIOUS',
-      entropy: 7.96,
-      irpCount: 142,
-      changedFilesCount: 6,
-      createdFilesCount: 2,
-      detectedTriggers: ['Entropy 7.96 > Threshold 7.8', 'Honeypot Trap Modified', 'Rapid File Overwrites'],
-      startTime: new Date().toISOString(),
-      killTime: new Date(Date.now() + 1200).toISOString(),
-      reportPath: `C:\\Report${newGid}.log`
-    };
-
-    this.trackedProcesses.unshift(newProc);
-
-    const newReport: RansomWatchReport = {
-      id: `REP-${newGid}`,
-      gid: newGid,
-      processName,
-      startTime: newProc.startTime,
-      killTime: newProc.killTime!,
-      isKilled: true,
-      pids: newProc.pids,
-      changedFiles: [
-        `${targetFolder}\\active_customers.mdf.locked`,
-        `${targetFolder}\\internal_secrets.kdbx.locked`,
-        `${targetFolder}\\!00_users_prod.mdf.locked`
-      ],
-      createdFiles: [
-        `${targetFolder}\\RECOVER_INSTRUCTIONS.html`
-      ],
-      restoreStatus: 'SUCCESS',
-      azureSnapshotTimestamp: new Date().toISOString()
-    };
-
-    this.incidentReports.unshift(newReport);
-    return { process: newProc, report: newReport };
   }
 }
 

@@ -127,6 +127,17 @@ export interface CorrelatedIncident {
   status: 'OPEN' | 'INVESTIGATING' | 'MITIGATED';
   rawRansomWatchReport?: RansomWatchReport;
   rawBreachGuardData?: EmailBreachResult;
+  evidence?: {
+    source: string;
+    eventId?: string;
+    timestamp: string;
+    pid?: number;
+    gid?: number;
+    operation?: string;
+    path?: string;
+    entropy?: number;
+    details?: string;
+  }[];
 }
 
 export interface SecurityMetrics {

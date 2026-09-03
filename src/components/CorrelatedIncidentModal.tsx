@@ -69,17 +69,17 @@ export const CorrelatedIncidentModal: React.FC<CorrelatedIncidentModalProps> = (
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-purple-300 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-purple-400" />
-                <span>AI Threat Correlation Synthesis</span>
+                <span>Evidence-Gated Threat Correlation</span>
               </span>
               <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded">
-                Cross-Domain Match: 99.4% Confidence
+                Verified Grounded Signals
               </span>
             </div>
             <p className="text-xs text-slate-200 leading-relaxed">
               {incident.correlationSummary}
             </p>
             <div className="pt-2 border-t border-purple-500/20 text-[11px] text-purple-200/90 font-mono">
-              <strong>Attack Path:</strong> {incident.attackVector}
+              <strong>Attack Path:</strong> {incident.attackVector || 'Verified telemetry sequence'}
             </div>
           </div>
 
@@ -99,19 +99,25 @@ export const CorrelatedIncidentModal: React.FC<CorrelatedIncidentModalProps> = (
               <div className="space-y-2 text-slate-300 font-mono">
                 <div>
                   <span className="text-slate-500 text-[10px] block">Target Account:</span>
-                  <span className="text-white font-bold">{incident.linkedEmail || 'admin@enterprise-corp.com'}</span>
+                  <span className="text-white font-bold">{incident.linkedEmail || 'No linked identity'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 text-[10px] block">Known Compromises:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 text-[10px] border border-rose-800">Dropbox</span>
-                    <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 text-[10px] border border-rose-800">LinkedIn</span>
-                    <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 text-[10px] border border-rose-800">Adobe</span>
+                    {incident.rawBreachGuardData?.breaches?.length ? (
+                      incident.rawBreachGuardData.breaches.map((b, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 text-[10px] border border-rose-800">{b}</span>
+                      ))
+                    ) : (
+                      <span className="text-slate-500 text-[10px]">None flagged in active session</span>
+                    )}
                   </div>
                 </div>
                 <div>
                   <span className="text-slate-500 text-[10px] block">Compromised Data Types:</span>
-                  <span className="text-slate-300">{incident.compromisedDataClasses.join(', ')}</span>
+                  <span className="text-slate-300">
+                    {incident.compromisedDataClasses.length ? incident.compromisedDataClasses.join(', ') : 'None'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -129,15 +135,20 @@ export const CorrelatedIncidentModal: React.FC<CorrelatedIncidentModalProps> = (
               <div className="space-y-2 text-slate-300 font-mono">
                 <div>
                   <span className="text-slate-500 text-[10px] block">Executable & GID:</span>
-                  <span className="text-white font-bold">{incident.linkedProcess} (GID: {incident.linkedGid})</span>
+                  <span className="text-white font-bold">{incident.linkedProcess || 'System process'} (GID: {incident.linkedGid || 'N/A'})</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 text-[10px] block">Shannon Entropy:</span>
-                  <span className="text-rose-400 font-bold">7.94 / 8.00 (High Encryption Spike)</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Kernel Action:</span>
-                  <span className="text-emerald-400 font-bold">MESSAGE_KILL_GID Executed &bull; Azure Restored</span>
+                  <span className="text-slate-500 text-[10px] block">Observed Evidence:</span>
+                  <div className="space-y-1 mt-1">
+                    {(incident.evidence || []).map((ev, i) => (
+                      <div key={i} className="text-[10px] text-slate-300 bg-slate-950/60 p-1.5 rounded border border-slate-800">
+                        <strong className="text-cyan-400">[{ev.source}]</strong> {ev.details}
+                      </div>
+                    ))}
+                    {!incident.evidence?.length && (
+                      <span className="text-slate-500 text-[10px]">Real-time kernel monitoring active</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

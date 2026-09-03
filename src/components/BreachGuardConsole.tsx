@@ -12,15 +12,15 @@ import {
   CheckCircle, 
   Clock, 
   FileText, 
-  Globe,
-  Database,
-  Building,
-  Copy,
-  Check,
-  Send,
-  UserX,
-  FileCheck2,
-  Calendar
+  Globe, 
+  Database, 
+  Building, 
+  Copy, 
+  Check, 
+  Send, 
+  UserX, 
+  FileCheck2, 
+  Calendar 
 } from 'lucide-react';
 import { EmailBreachResult, PasswordBreachResult, DataBrokerEntry, GdprRequestPayload } from '../types';
 import { breachGuardAdapter } from '../adapters/breachguard-adapter';
@@ -70,15 +70,10 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
     if (!emailInput.trim()) return;
 
     setIsCheckingEmail(true);
-    try {
-      const result = await breachGuardAdapter.checkEmail(emailInput);
-      setLatestEmailResult(result);
-      onEmailChecked(result);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsCheckingEmail(false);
-    }
+    const result = await breachGuardAdapter.checkEmail(emailInput);
+    setLatestEmailResult(result);
+    onEmailChecked(result);
+    setIsCheckingEmail(false);
   };
 
   const handleCheckPassword = async (e: React.FormEvent) => {
@@ -86,14 +81,9 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
     if (!passwordInput) return;
 
     setIsCheckingPassword(true);
-    try {
-      const result = await breachGuardAdapter.checkPasswordKAnonymity(passwordInput);
-      setPasswordResult(result);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsCheckingPassword(false);
-    }
+    const result = await breachGuardAdapter.checkPasswordKAnonymity(passwordInput);
+    setPasswordResult(result);
+    setIsCheckingPassword(false);
   };
 
   const handleGenerateGdpr = async (e: React.FormEvent) => {
@@ -212,7 +202,7 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
               </form>
 
               {/* Email Scan Result Display */}
-              {latestEmailResult && (
+              {latestEmailResult ? (
                 <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-mono truncate max-w-[220px]">
@@ -251,6 +241,12 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
                       ))}
                     </div>
                   )}
+                </div>
+              ) : (
+                <div className="mt-4 pt-4 border-t border-slate-800 text-center py-6 text-slate-500 space-y-1">
+                  <Lock className="w-5 h-5 text-indigo-400 mx-auto opacity-60" />
+                  <p className="text-xs text-slate-300 font-medium">NO BREACH CHECK PERFORMED</p>
+                  <p className="text-[11px] text-slate-500">Enter an email address above to check exposed records with zero-knowledge proxy.</p>
                 </div>
               )}
             </div>
@@ -312,36 +308,36 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
               </form>
 
               {/* Password Result */}
-              {passwordResult && (
+              {passwordResult ? (
                 <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
                   <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2 font-mono text-xs">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Transmitted Prefix:</span>
                       <span className="text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/30">
-                        {passwordResult.sha1Prefix}
+                        {passwordResult.sha1Prefix}***** (SHA-1)
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Masked Hash:</span>
-                      <span className="text-slate-500 text-[11px] truncate max-w-[180px]">
-                        {passwordResult.sha1FullMasked}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Lookup Duration:</span>
-                      <span className="text-slate-300">{passwordResult.evaluationTimeMs} ms</span>
+                      <span className="text-slate-400">Local Verification Time:</span>
+                      <span className="text-slate-300">{passwordResult.evaluationTimeMs.toFixed(1)} ms</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                      <span className="text-slate-400">Breach Exposure:</span>
+                      <span className="text-slate-400">Exposure Status:</span>
                       {passwordResult.exposed ? (
                         <span className="text-rose-400 font-bold">
-                          Exposed ({passwordResult.breachCount.toLocaleString()} times)
+                          Compromised in {passwordResult.breachCount.toLocaleString()} breaches
                         </span>
                       ) : (
                         <span className="text-emerald-400 font-bold">Clean / Not Found in Dumps</span>
                       )}
                     </div>
                   </div>
+                </div>
+              ) : (
+                <div className="mt-4 pt-4 border-t border-slate-800 text-center py-6 text-slate-500 space-y-1">
+                  <KeyRound className="w-5 h-5 text-indigo-400 mx-auto opacity-60" />
+                  <p className="text-xs text-slate-300 font-medium">AWAITING PASSWORD EVALUATION</p>
+                  <p className="text-[11px] text-slate-500">Test any password locally with mathematical k-Anonymity protection.</p>
                 </div>
               )}
             </div>
@@ -367,45 +363,53 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
             </span>
           </div>
 
-          <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-            {history.flatMap(h => h.enrichedBreaches.map(b => ({ ...b, email: h.email }))).map((item, idx) => (
-              <div key={idx} className="relative group">
-                <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-slate-900 border-2 border-indigo-500 group-hover:bg-indigo-400 transition-all" />
-                <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-200 text-sm">{item.name}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                        item.severity === 'CRITICAL' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                      }`}>
-                        {item.severity}
+          {history.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl space-y-2">
+              <Clock className="w-6 h-6 text-indigo-400 mx-auto opacity-60" />
+              <p className="text-xs text-slate-300 font-medium">No Breaches Checked in Active Session</p>
+              <p className="text-[11px] text-slate-500">Scan an email address in the Scanner tab to view chronological breach timeline and affected data classes.</p>
+            </div>
+          ) : (
+            <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+              {history.flatMap(h => h.enrichedBreaches.map(b => ({ ...b, email: h.email }))).map((item, idx) => (
+                <div key={idx} className="relative group">
+                  <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full bg-slate-900 border-2 border-indigo-500 group-hover:bg-indigo-400 transition-all" />
+                  <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-200 text-sm">{item.name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                          item.severity === 'CRITICAL' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                        }`}>
+                          {item.severity}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        Breached: {item.breachDate} &bull; Recorded: {item.addedDate}
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      Breached: {item.breachDate} &bull; Recorded: {item.addedDate}
-                    </span>
-                  </div>
 
-                  <p className="text-xs text-slate-400">{item.description}</p>
+                    <p className="text-xs text-slate-400">{item.description}</p>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-500 text-[11px]">Compromised Records:</span>
-                      <span className="text-slate-300 font-mono font-semibold">{item.pwnCount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {item.dataClasses.map((cls, cIdx) => (
-                        <span key={cIdx} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono">
-                          {cls}
-                        </span>
-                      ))}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-[11px]">Compromised Records:</span>
+                        <span className="text-slate-300 font-mono font-semibold">{item.pwnCount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {item.dataClasses.map((cls, cIdx) => (
+                          <span key={cIdx} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono">
+                            {cls}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -498,8 +502,10 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
                   <button
                     type="button"
                     onClick={() => setGdprPayload({ ...gdprPayload, requestType: 'ERASURE' })}
-                    className={`p-2.5 rounded-xl border text-center font-medium transition-all ${
-                      gdprPayload.requestType === 'ERASURE' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400'
+                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition-all ${
+                      gdprPayload.requestType === 'ERASURE'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+                        : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-slate-200'
                     }`}
                   >
                     Article 17: Right to Erasure
@@ -507,8 +513,10 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
                   <button
                     type="button"
                     onClick={() => setGdprPayload({ ...gdprPayload, requestType: 'ACCESS' })}
-                    className={`p-2.5 rounded-xl border text-center font-medium transition-all ${
-                      gdprPayload.requestType === 'ACCESS' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400'
+                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition-all ${
+                      gdprPayload.requestType === 'ACCESS'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+                        : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-slate-200'
                     }`}
                   >
                     Article 15: Access Request
@@ -517,89 +525,87 @@ export const BreachGuardConsole: React.FC<BreachGuardConsoleProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Target Breached Organization / Service</label>
-                <input
-                  type="text"
-                  value={gdprPayload.targetCompany}
-                  onChange={(e) => setGdprPayload({ ...gdprPayload, targetCompany: e.target.value })}
-                  placeholder="e.g. Adobe Inc., Dropbox, Canva..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
-                  required
-                />
-              </div>
-
-              <div>
                 <label className="block text-slate-300 mb-1 font-medium">Your Full Legal Name</label>
                 <input
                   type="text"
                   value={gdprPayload.fullName}
                   onChange={(e) => setGdprPayload({ ...gdprPayload, fullName: e.target.value })}
-                  placeholder="e.g. Jane Doe"
+                  placeholder="e.g. John Doe"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-medium">Associated Account Email</label>
+                <input
+                  type="email"
+                  value={gdprPayload.email}
+                  onChange={(e) => setGdprPayload({ ...gdprPayload, email: e.target.value })}
+                  placeholder="e.g. john.doe@domain.com"
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">Your Registered Account Email</label>
+                <label className="block text-slate-300 mb-1 font-medium">Target Breached Organization / Broker</label>
                 <input
-                  type="email"
-                  value={gdprPayload.email}
-                  onChange={(e) => setGdprPayload({ ...gdprPayload, email: e.target.value })}
-                  placeholder="e.g. user@company.com"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                  type="text"
+                  value={gdprPayload.targetCompany}
+                  onChange={(e) => setGdprPayload({ ...gdprPayload, targetCompany: e.target.value })}
+                  placeholder="e.g. Acxiom Inc / Dropbox LLC"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all shadow-lg flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all mt-2"
               >
-                <FileText className="w-4 h-4" />
-                <span>Generate Official Legal Notice</span>
+                <Send className="w-4 h-4" />
+                <span>Generate Legal Compliance Notice</span>
               </button>
             </form>
           </div>
 
-          {/* Generated Output Preview */}
-          <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4">
-            <div>
+          {/* Letter Output Display */}
+          <div className="glass-panel p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-white text-sm flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-indigo-400" />
-                  Generated Notice Preview
-                </h3>
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-400" />
+                  <h3 className="font-semibold text-white">Generated Legal Notice Artifact</h3>
+                </div>
                 {generatedLetter && (
                   <button
                     onClick={handleCopyLetter}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1 transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-mono border border-slate-700 transition-all"
                   >
-                    {copiedLetter ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedLetter ? 'Copied' : 'Copy Notice'}</span>
+                    {copiedLetter ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Notice</span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
 
-              {generatedLetter ? (
-                <textarea
-                  readOnly
-                  value={generatedLetter}
-                  rows={14}
-                  className="w-full mt-3 p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none resize-none leading-relaxed"
-                />
-              ) : (
-                <div className="h-64 mt-3 rounded-xl border border-dashed border-slate-800 flex flex-col items-center justify-center text-center p-6 text-slate-500 text-xs">
-                  <FileText className="w-8 h-8 mb-2 opacity-40 text-indigo-400" />
-                  <span>Fill in the details and click "Generate Official Legal Notice" to create an Article 15/17 compliance letter.</span>
-                </div>
-              )}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 font-mono text-[11px] text-slate-300 h-80 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                {generatedLetter || 'Fill out the form on the left to generate your customized Article 17 Erasure Notice or Article 15 SAR letter.'}
+              </div>
             </div>
 
-            <div className="text-[11px] text-slate-500 font-mono pt-3 border-t border-slate-800/60 flex items-center justify-between">
-              <span>EU Regulation 2016/679 Mandate</span>
-              <span>30-Day Mandatory Fulfillment</span>
-            </div>
+            <p className="text-[11px] text-slate-500 font-mono">
+              Mandated compliance period: 30 days under GDPR Article 12(3) / CCPA Section 1798.130.
+            </p>
           </div>
 
         </div>

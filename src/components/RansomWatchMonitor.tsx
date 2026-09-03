@@ -42,7 +42,7 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
   recentIrps,
   onTriggerTestAttack
 }) => {
-  const [selectedReport, setSelectedReport] = useState<RansomWatchReport>(reports[0]);
+  const [selectedReport, setSelectedReport] = useState<RansomWatchReport | null>(reports[0] || null);
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
@@ -67,7 +67,7 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
     setIsExecutingAction(true);
     await ransomWatchAdapter.dispatchControlledAction('RESTORE_SNAPSHOT', gid);
     setIsExecutingAction(false);
-    setActionSuccessMsg(`Azure snapshot rollback completed for GID ${gid}.`);
+    setActionSuccessMsg(`Rollback command completed for GID ${gid}.`);
     setTimeout(() => setActionSuccessMsg(null), 3000);
   };
 
@@ -101,13 +101,6 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
               {actionSuccessMsg}
             </span>
           )}
-          <button
-            onClick={onTriggerTestAttack}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-1.5 transition-all"
-          >
-            <Play className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Simulate Test Attack</span>
-          </button>
         </div>
       </div>
 
@@ -122,64 +115,72 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
               <h2 className="text-base font-bold text-white">Tracked Process Groups (GIDs)</h2>
             </div>
             <span className="text-xs text-slate-400 font-mono">
-              {processes.length} Active Process Families
+              {processes.length} Tracked Families
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 pb-2">
-                  <th className="py-2.5 font-semibold">GID / Main PID</th>
-                  <th className="py-2.5 font-semibold">Process Name</th>
-                  <th className="py-2.5 font-semibold">Entropy</th>
-                  <th className="py-2.5 font-semibold">Status</th>
-                  <th className="py-2.5 font-semibold text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {processes.map((p) => (
-                  <tr key={p.gid} className="hover:bg-slate-900/50 transition-colors">
-                    <td className="py-3 text-cyan-300">
-                      GID: {p.gid} <span className="text-slate-500">({p.mainPid})</span>
-                    </td>
-                    <td className="py-3 text-slate-200 font-sans font-medium">
-                      {p.name}
-                    </td>
-                    <td className="py-3">
-                      <span className={`px-2 py-0.5 rounded ${
-                        p.entropy > 7.5 ? 'bg-rose-500/20 text-rose-300 font-bold' : 'bg-slate-800 text-slate-300'
-                      }`}>
-                        {p.entropy.toFixed(2)} / 8.0
-                      </span>
-                    </td>
-                    <td className="py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        p.status === 'TERMINATED' ? 'bg-slate-800 text-slate-400 border border-slate-700' :
-                        p.status === 'MALICIOUS' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse' :
-                        'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-right">
-                      {p.status !== 'TERMINATED' && (
-                        <button
-                          onClick={() => handleKillGid(p.gid)}
-                          disabled={isExecutingAction}
-                          className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/40 text-rose-300 text-[11px] font-medium transition-all"
-                        >
-                          Kill GID
-                        </button>
-                      )}
-                      {p.status === 'TERMINATED' && (
-                        <span className="text-slate-500 text-[11px]">Contained</span>
-                      )}
-                    </td>
+            {processes.length === 0 ? (
+              <div className="py-10 text-center text-slate-500 font-sans space-y-1">
+                <ShieldCheck className="w-7 h-7 text-emerald-400 mx-auto opacity-75" />
+                <p className="text-xs text-slate-300">No active or suspicious process groups detected.</p>
+                <p className="text-[11px] text-slate-500">System is idle and protected by kernel minifilter.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 pb-2">
+                    <th className="py-2.5 font-semibold">GID / Main PID</th>
+                    <th className="py-2.5 font-semibold">Process Name</th>
+                    <th className="py-2.5 font-semibold">Entropy</th>
+                    <th className="py-2.5 font-semibold">Status</th>
+                    <th className="py-2.5 font-semibold text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {processes.map((p) => (
+                    <tr key={p.gid} className="hover:bg-slate-900/50 transition-colors">
+                      <td className="py-3 text-cyan-300">
+                        GID: {p.gid} <span className="text-slate-500">({p.mainPid})</span>
+                      </td>
+                      <td className="py-3 text-slate-200 font-sans font-medium">
+                        {p.name}
+                      </td>
+                      <td className="py-3">
+                        <span className={`px-2 py-0.5 rounded ${
+                          p.entropy > 7.5 ? 'bg-rose-500/20 text-rose-300 font-bold' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {p.entropy.toFixed(2)} / 8.0
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          p.status === 'TERMINATED' ? 'bg-slate-800 text-slate-400 border border-slate-700' :
+                          p.status === 'MALICIOUS' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse' :
+                          'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                        }`}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right">
+                        {p.status !== 'TERMINATED' && (
+                          <button
+                            onClick={() => handleKillGid(p.gid)}
+                            disabled={isExecutingAction}
+                            className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/40 text-rose-300 text-[11px] font-medium transition-all"
+                          >
+                            Kill GID
+                          </button>
+                        )}
+                        {p.status === 'TERMINATED' && (
+                          <span className="text-slate-500 text-[11px]">Contained</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -197,7 +198,7 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
             </div>
 
             <p className="text-xs text-slate-400">
-              Trap files planted by <code className="text-purple-300">TrapHandler.cpp</code> to trip ransomware early.
+              Trap files monitored by <code className="text-purple-300">TrapHandler.cpp</code> to intercept ransomware early.
             </p>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -207,7 +208,9 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
                     {getTrapIcon(trap.category)}
                     <span className="text-slate-200 truncate font-mono text-[11px]">{trap.path.split('\\').pop()}</span>
                   </div>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono uppercase shrink-0">
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-mono uppercase shrink-0 ${
+                    trap.state === 'TRIGGERED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse' : 'bg-emerald-500/10 text-emerald-400'
+                  }`}>
                     {trap.state}
                   </span>
                 </div>
@@ -227,67 +230,75 @@ export const RansomWatchMonitor: React.FC<RansomWatchMonitorProps> = ({
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
           <div className="flex items-center gap-2">
             <Terminal className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-base font-bold text-white">RansomWatch Incident Forensics & Cloud Rollback</h2>
+            <h2 className="text-base font-bold text-white">RansomWatch Incident Forensics & Rollback</h2>
           </div>
           <span className="text-xs text-slate-400 font-mono">
-            Parsed from <code className="text-cyan-300">C:\Report*.log</code>
+            Authoritative source: <code className="text-cyan-300">C:\Report*.log</code>
           </span>
         </div>
 
-        {reports.length > 0 && selectedReport && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
-            
-            {/* Incident Summary Card */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">{selectedReport.id}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold">
-                  GID {selectedReport.gid}
-                </span>
-              </div>
-
-              <div className="space-y-1 text-xs font-mono">
-                <div className="text-slate-400">Process: <strong className="text-slate-200 font-sans">{selectedReport.processName}</strong></div>
-                <div className="text-slate-400">PIDs: <span className="text-slate-300">{selectedReport.pids.join(', ')}</span></div>
-                <div className="text-slate-400">Started: <span className="text-slate-300">{new Date(selectedReport.startTime).toLocaleTimeString()}</span></div>
-                <div className="text-slate-400">Driver Kill: <span className="text-rose-400 font-bold">{new Date(selectedReport.killTime).toLocaleTimeString()}</span></div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-400">Cloud Snapshot:</span>
-                <span className="text-xs font-semibold text-emerald-400 font-mono">SUCCESS (Azure)</span>
-              </div>
-
-              <button
-                onClick={() => handleRestoreSnapshot(selectedReport.gid)}
-                disabled={isExecutingAction}
-                className="w-full py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Verify & Rollback Encrypted Files</span>
-              </button>
-            </div>
-
-            {/* Affected Files List */}
-            <div className="lg:col-span-2 p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-200">Impacted Files Intercepted ({selectedReport.changedFiles.length})</span>
-                <span className="text-slate-500 font-mono">Protected by FsFilter</span>
-              </div>
-
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 font-mono text-[11px]">
-                {selectedReport.changedFiles.map((file, fIdx) => (
-                  <div key={fIdx} className="p-2 rounded bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-rose-300 truncate max-w-md">{file}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800 shrink-0">
-                      RESTORE READY
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+        {reports.length === 0 ? (
+          <div className="py-8 text-center text-slate-500 font-sans border border-dashed border-slate-800 rounded-xl space-y-1">
+            <ShieldCheck className="w-6 h-6 text-emerald-400 mx-auto opacity-75" />
+            <p className="text-xs text-slate-300">No incident logs present on system drive.</p>
+            <p className="text-[11px] text-slate-500">When FsFilter.sys intercepts ransomware, forensic Report*.log artifacts appear here.</p>
           </div>
+        ) : (
+          selectedReport && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+              
+              {/* Incident Summary Card */}
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">{selectedReport.id}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold">
+                    GID {selectedReport.gid}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-xs font-mono">
+                  <div className="text-slate-400">Process: <strong className="text-slate-200 font-sans">{selectedReport.processName}</strong></div>
+                  <div className="text-slate-400">PIDs: <span className="text-slate-300">{selectedReport.pids.join(', ')}</span></div>
+                  <div className="text-slate-400">Started: <span className="text-slate-300">{new Date(selectedReport.startTime).toLocaleTimeString()}</span></div>
+                  <div className="text-slate-400">Driver Kill: <span className="text-rose-400 font-bold">{new Date(selectedReport.killTime).toLocaleTimeString()}</span></div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Status:</span>
+                  <span className="text-xs font-semibold text-emerald-400 font-mono">CONTAINED</span>
+                </div>
+
+                <button
+                  onClick={() => handleRestoreSnapshot(selectedReport.gid)}
+                  disabled={isExecutingAction}
+                  className="w-full py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Verify Impacted Files</span>
+                </button>
+              </div>
+
+              {/* Affected Files List */}
+              <div className="lg:col-span-2 p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-200">Impacted Files Intercepted ({selectedReport.changedFiles.length})</span>
+                  <span className="text-slate-500 font-mono">Protected by FsFilter</span>
+                </div>
+
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 font-mono text-[11px]">
+                  {selectedReport.changedFiles.map((file, fIdx) => (
+                    <div key={fIdx} className="p-2 rounded bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
+                      <span className="text-rose-300 truncate max-w-md">{file}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800 shrink-0">
+                        INTERCEPTED
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )
         )}
       </div>
 

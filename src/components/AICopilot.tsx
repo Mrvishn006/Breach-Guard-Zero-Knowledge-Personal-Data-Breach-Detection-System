@@ -67,7 +67,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({
   };
 
   const handleExecuteAction = async (actionKey: string, label: string) => {
-    const res = await aiAgentOrchestrator.executeControlledAction(actionKey);
+    const res = await aiAgentOrchestrator.executeSuggestedAction(actionKey);
     setActionFeedback(res);
     setTimeout(() => setActionFeedback(null), 4000);
   };
@@ -86,7 +86,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white">AegisGuard SOC AI Copilot</h2>
+                <h2 className="text-sm font-bold text-white">BreachGuard AI SOC Copilot</h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono">
                   Telemetry Grounded
                 </span>
