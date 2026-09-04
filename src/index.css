@@ -57,3 +57,13 @@ button:focus-visible, input:focus-visible {
   outline: 2px solid #F97316;
   outline-offset: 2px;
 }
+
+@keyframes waveform {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+

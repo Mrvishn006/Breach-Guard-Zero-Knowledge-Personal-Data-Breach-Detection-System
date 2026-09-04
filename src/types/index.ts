@@ -151,6 +151,22 @@ export interface SecurityMetrics {
   recoveredFilesCount: number;
 }
 
+export type SpeechStatus = 'idle' | 'speaking' | 'paused' | 'unavailable' | 'error';
+
+export interface VoiceSettings {
+  voiceEnabled: boolean;
+  selectedVoiceURI: string;
+  rate: number; // 0.8 to 1.2, default 1.0
+  pitch: number; // default 1.0
+  volume: number; // 0.0 to 1.0, default 1.0
+}
+
+export interface TechnicalDetailsItem {
+  label: string;
+  value: string | number;
+  highlight?: boolean;
+}
+
 export interface AIChatMessage {
   id: string;
   sender: 'user' | 'agent';
@@ -158,6 +174,7 @@ export interface AIChatMessage {
   text: string;
   suggestedActions?: { label: string; actionKey: string; params?: any }[];
   incidentContext?: CorrelatedIncident;
+  technicalDetails?: TechnicalDetailsItem[];
 }
 
 export interface DataBrokerEntry {

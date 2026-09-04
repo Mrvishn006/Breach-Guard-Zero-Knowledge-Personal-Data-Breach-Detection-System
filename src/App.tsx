@@ -6,7 +6,7 @@ import { StatusBarBottom } from './components/StatusBarBottom';
 import { UnifiedOverview } from './components/UnifiedOverview';
 import { RansomWatchMonitor } from './components/RansomWatchMonitor';
 import { BreachGuardConsole } from './components/BreachGuardConsole';
-import { AICopilot } from './components/AICopilot';
+import { BreachGuardAssistant } from './components/BreachGuardAssistant';
 import { CorrelatedIncidentModal } from './components/CorrelatedIncidentModal';
 
 import { SecurityMetrics, CorrelatedIncident, IrpTelemetryEvent, LiveEndpointEvent, AIChatMessage, EmailBreachResult } from './types';
@@ -233,13 +233,14 @@ export function App() {
               />
             )}
 
-            {/* Tab 4: AI SOC Copilot & Autonomous Triage */}
+            {/* Tab 4: BreachGuard Assistant (Friendly Female Voice + Grounded Conversation) */}
             {activeTab === 'copilot' && (
-              <AICopilot 
+              <BreachGuardAssistant 
                 messages={chatMessages}
                 onSendMessage={handleSendMessage}
                 onSelectIncident={setSelectedIncident}
                 onSimulateAttack={() => {}}
+                isTelemetryLive={isTelemetryLive}
               />
             )}
 

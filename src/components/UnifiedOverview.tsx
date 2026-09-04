@@ -444,32 +444,32 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
           </div>
         </div>
 
-        {/* Right 1 Column: AI SOC Orchestrator */}
+        {/* Right 1 Column: BreachGuard Assistant */}
         <div className="bg-card p-6 rounded-3xl border border-slate-200 shadow-card flex flex-col justify-between space-y-4">
           <div className="space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-600" />
-                <h3 className="font-bold text-slate-900 text-sm">AI SOC Orchestrator</h3>
+                <h3 className="font-bold text-slate-900 text-sm">BreachGuard Assistant</h3>
               </div>
               <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-mono font-semibold">
-                Active
+                Voice & Text Active
               </span>
             </div>
 
             <p className="text-xs text-slate-500 leading-relaxed">
-              Autonomous cross-domain correlation between kernel process anomalies and public credential exposures.
+              Your friendly cybersecurity companion. Clear explanations grounded in verified telemetry, spoken with a natural voice.
             </p>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="text-purple-700 font-bold text-[11px] uppercase tracking-wider">
-                Attack Chain Attribution
+                Current Security Assessment
               </div>
               <p className="text-slate-700 text-xs leading-relaxed">
                 {primaryIncident ? (
                   <span>{primaryIncident.correlationSummary}</span>
                 ) : (
-                  <span className="text-slate-500 italic">Insufficient telemetry for attack-chain attribution.</span>
+                  <span>Everything looks quiet from the telemetry I've received so far. No active threats detected.</span>
                 )}
               </p>
             </div>
@@ -480,7 +480,7 @@ export const UnifiedOverview: React.FC<UnifiedOverviewProps> = ({
               onClick={() => onNavigateTab('copilot')}
               className="w-full py-2.5 px-4 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-accent-orange transition-all"
             >
-              <span>Open Interactive AI SOC</span>
+              <span>Ask BreachGuard Assistant</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

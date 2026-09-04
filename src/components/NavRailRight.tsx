@@ -7,7 +7,7 @@ import {
   Cpu, 
   FileText, 
   Network, 
-  Bot, 
+  Sparkles, 
   FileSpreadsheet, 
   RotateCcw, 
   Settings 
@@ -46,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'processes', label: 'Processes', icon: Cpu },
   { id: 'file_activity', label: 'File Activity', icon: FileText },
   { id: 'network', label: 'Network', icon: Network },
-  { id: 'ai_analysis', label: 'AI Analysis', icon: Bot },
+  { id: 'ai_analysis', label: 'Assistant', icon: Sparkles },
   { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
   { id: 'recovery', label: 'Recovery', icon: RotateCcw },
   { id: 'settings', label: 'Settings', icon: Settings }

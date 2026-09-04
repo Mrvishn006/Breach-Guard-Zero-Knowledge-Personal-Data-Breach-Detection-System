@@ -1,5 +1,5 @@
 import React from 'react';
-import { Radio, Activity, Cpu, Lock, Bot, Play } from 'lucide-react';
+import { Radio, Activity, Cpu, Lock, Sparkles, Play } from 'lucide-react';
 import { SecurityMetrics } from '../types';
 import { BreachGuardLogo } from './BreachGuardLogo';
 
@@ -93,9 +93,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Bot className="w-3.5 h-3.5 text-indigo-500" />
-            <span>AI Copilot</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>Assistant</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
           </button>
         </nav>
 
