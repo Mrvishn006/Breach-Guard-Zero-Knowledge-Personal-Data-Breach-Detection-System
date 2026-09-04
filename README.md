@@ -1,4 +1,3 @@
-</>Markdown 
 # 🛡️ BreachGuard
 
 ### Zero-Knowledge Credential Defense & Ransomware Mitigation
